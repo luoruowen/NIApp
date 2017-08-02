@@ -6,3 +6,5 @@
 快捷方式下载测试:https://luoruowen.github.io/NIApp/txh/
 
 四川能耗下载测试:https://luoruowen.github.io/NIApp/Energymanagement/
+
+iframe 测试 :https://luoruowen.github.io/NIApp/iframeTest/
