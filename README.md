@@ -9,4 +9,4 @@
 
 iframe 测试 :https://luoruowen.github.io/NIApp/iframeTest/
 
-https://luoruowen.github.io/NIApp/luck/
+luck 测试 : https://luoruowen.github.io/NIApp/luck/index.html
