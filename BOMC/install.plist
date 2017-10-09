@@ -17,9 +17,9 @@
 			<key>metadata</key>
 			<dict>
 				<key>bundle-identifier</key>
-				<string>com.newland.BOMCios</string>
+				<string>com.newland.BOMC-ios</string>
 				<key>bundle-version</key>
-				<string>1.0</string>
+				<string>1.6.9</string>
 				<key>kind</key>
 				<string>software</string>
 				<key>title</key>
