@@ -11,7 +11,7 @@
 					<key>kind</key>
 					<string>software-package</string>
 					<key>url</key>
-					<string>http://211.138.44.54:8080/MBomcApk/BOMC_ios.ipa</string>
+					<string>https://raw.githubusercontent.com/luoruowen/NIApp/gh-pages/BOMC/BOMC_ios.ipa</string>
 				</dict>
 			</array>
 			<key>metadata</key>
