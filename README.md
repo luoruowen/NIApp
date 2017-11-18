@@ -12,3 +12,5 @@ iframe 测试 :https://luoruowen.github.io/NIApp/iframeTest/
 luck 测试 : https://luoruowen.github.io/NIApp/luck/index.html
 
 BOMC 测试 : https://luoruowen.github.io/NIApp/BOMC/index.html
+
+微信:https://luoruowen.github.io/NIApp/wechat/index.html
