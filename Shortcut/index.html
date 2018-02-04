@@ -98,7 +98,7 @@
         var start=name.indexOf("?")+1;
         name=name.substring(start,name.length);
         var title=name.substring((name.indexOf("&title=")+7),name.length);
-        $("#pageShare_title").val(title);
+        $("#pageShare_title").html(title);
         //参数
         jQuery('#qrcodeCanvas').qrcode({
              render    : "canvas",
