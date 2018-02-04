@@ -1,0 +1,119 @@
+<%@ page language="java" import="java.util.*" pageEncoding="UTF-8"%>
+<%@ taglib prefix="s"  uri="/struts-tags" %>
+<!DOCTYPE html>
+<html >
+  <head>
+    <title>创建快捷方式</title>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="initial-scale=1, maximum-scale=1">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="x5-fullscreen" content="true">
+    <!-- UC应用模式 -->
+    <meta name="browsermode" content="application">
+    <link rel="stylesheet" href="./css/light7.min.css">
+    <script type="text/javascript" src="./js/jquery.min.js"></script>
+    <script type="text/javascript" src="./js/layer.js"></script>
+    
+    <script type="text/javascript" src="./js/light7.min.js"></script>
+    <!--如果你用到了拓展包中的组件，还需要引用对应的JS文件-->
+    <link rel="stylesheet" href="./css/light7-swiper.min.css">
+    
+    <script type="text/javascript" src="./js/qrcode/jquery.qrcode.js" ></script>
+    <script type="text/javascript" src="./js/qrcode/qrcode.js" ></script> 
+    <script type="text/javascript" src="./js/qrcode/utf.js" ></script>
+    
+    <style type="text/css">
+    .tippage
+    {
+        position: fixed;
+        top: 0;
+        left: 0;
+        display: none;
+        width: 100%;
+        height: 120%;
+        background: rgba(0,0,0, .8);
+        z-index:100000;
+    }
+    .tippage img
+    {
+        width: 100%;
+    }
+    </style>
+  </head>
+<body>
+<div class="tippage">
+       <!-- <img src="data:image/jpg;base64,$imageData" alt=""> -->
+    <img src="../tip.png" alt="">
+</div>
+<!-- pageHelp  -->
+<div class="page no-tabbar" id='pageShare'>
+      <header class="bar bar-nav">
+        <a class="button button-link button-nav pull-left back" href="/ShortcutService/toSUI_index.action">
+          <span class="icon icon-left"></span>
+            返回
+        </a>
+        <h1 class='title'>分享下载</h1>
+      </header>
+      <div class="content">
+        <div class="content-block-title"></div>
+          <div class="card demo-card-header-pic" style="margin: 0 5rem;background: rgba(0,0,0,0);box-shadow: 0 0rem 0rem rgba(0,0,0,0);">
+            <div valign="bottom" class="card-header color-white no-border no-padding">
+            
+              <span id="qrcodeCanvas" class='card-cover'></span>
+            </div>
+          </div>
+          
+          <div class="content-block">
+            <div >
+              <p id="pageShare_title" class="" style="text-align: center;">快捷方式创建</p>
+            </div>
+          </div>
+          
+          <div class="bar bar-footer" style="background-color: rgba(0,0,0,0);border-top: 1px solid rgba(0,0,0,0);">
+              <p class="" style="text-align: center;margin: 0em 0;font-size: .5rem;">
+                Copyright© 2018  luoruowen个人开发者.
+              </p>
+          </div>
+      </div>
+</div>
+
+ <script>
+    if (!!navigator.userAgent.match(/AppleWebKit.*Mobile.*/)||!!navigator.userAgent.match(/AppleWebKit/)) { 
+        //判断是否是移动设备打开。browser代码在下面
+        var ua = navigator.userAgent.toLowerCase(); //获取判断用的对象
+        if (ua.match(/MicroMessenger/i) == "micromessenger" //在微信中打开
+            || ua.match(/WeiBo/i) == "weibo" //在新浪微博客户端打开 
+            || ua.match(/QQ/i) == "qq" //在QQ空间打开
+        ) {
+            $(".tippage").show(); 
+        }else{
+            
+        }
+    }
+
+    var name=window.location.href;
+    //字符串截取
+   if(name.indexOf("?")>=0){
+        var start=name.indexOf("?")+1;
+        name=name.substring(start,name.length);
+        var title=name.substring((name.indexOf("&title=")+7),name.length);
+        $("#pageShare_title").val(title);
+        //参数
+        jQuery('#qrcodeCanvas').qrcode({
+             render    : "canvas",
+             text    : "http://newideas.51mypc.cn/ShortcutService/ios.mobileconfig?"+name,
+             width : "200",               //二维码的宽度
+                   height : "200",              //二维码的高度
+                   background : "#ffffff",       //二维码的后景色
+                   foreground : "#000000",        //二维码的前景色
+                   src: 'http://127.0.0.1:8080/ShortcutService/webapp/Light7/img/1.png'             //二维码中间的图片
+         }); 
+    }
+
+     
+     
+ </script>
+</body>
+</html>
