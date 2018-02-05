@@ -54,7 +54,7 @@
             返回
         </a>
         <h1 class='title'>快捷方式分享</h1>
-        <a class="icon icon-download pull-right" onclick="download()"></a>
+        <a class="icon icon-download pull-right" href="javascript:fun_download()"></a>
       </header>
       <div class="content">
         <div class="content-block-title" style="margin: 4.75rem .75rem .5rem;"></div>
@@ -118,7 +118,7 @@
         }
     });
 
-    function download(){
+    function fun_download(){
         window.location.href="http://newideas.51mypc.cn/ShortcutService/ios.mobileconfig?id="+id;
     }
     
