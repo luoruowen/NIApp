@@ -49,7 +49,7 @@
 <!-- pageHelp  -->
 <div class="page no-tabbar" id='pageShare'>
       <header class="bar bar-nav">
-        <a class="button button-link button-nav pull-left back" href="javascript:window.history.go(-1);">
+        <a class="button button-link button-nav pull-left back" href="javascript:window.history.back();location.reload();">
           <span class="icon icon-left"></span>
             返回
         </a>
@@ -100,7 +100,8 @@
             name=name.substring(start,name.length);
             var id=name.substring((name.indexOf("?id=")+4),name.indexOf("&title="));
             var title=name.substring((name.indexOf("&title=")+7),name.length);
-            $("#pageShare_title").html(title);
+
+            $("#pageShare_title").html(encodeURIComponent(title));
 
             //参数
             jQuery('#qrcodeCanvas').qrcode({
