@@ -54,6 +54,7 @@
             返回
         </a>
         <h1 class='title'>快捷方式分享</h1>
+        <a class="icon icon-download pull-right" onclick="download()"></a>
       </header>
       <div class="content">
         <div class="content-block-title" style="margin: 4.75rem .75rem .5rem;"></div>
@@ -92,21 +93,22 @@
         }
     }
 
+    var id="";
     $(function(){
         var name=window.location.href;
         //字符串截取
        if(name.indexOf("?")>=0){
             var start=name.indexOf("?")+1;
             name=name.substring(start,name.length);
-            var id=name.substring((name.indexOf("?id=")+4),name.indexOf("&title="));
+            id=name.substring((name.indexOf("?id=")+4),name.indexOf("&title="));
             var title=name.substring((name.indexOf("&title=")+7),name.length);
 
-            $("#pageShare_title").html(title);
+            $("#pageShare_title").html(decodeURI(title));
 
             //参数
             jQuery('#qrcodeCanvas').qrcode({
                  render    : "canvas",
-                 text    : "http://newideas.51mypc.cn/ShortcutService/ios.mobileconfig?"+name,
+                 text    : "http://newideas.51mypc.cn/ShortcutService/ios.mobileconfig?id="+id,
                  width : "200",               //二维码的宽度
                        height : "200",              //二维码的高度
                        background : "#ffffff",       //二维码的后景色
@@ -115,6 +117,10 @@
              }); 
         }
     });
+
+    function download(){
+        window.location.href="http://newideas.51mypc.cn/ShortcutService/ios.mobileconfig?id="+id;
+    }
     
  </script>
 </body>
