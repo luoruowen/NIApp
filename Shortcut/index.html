@@ -18,7 +18,7 @@
     <link rel="Shortcut Icon" href="./favicon.ico" />
 
     <link rel="stylesheet" href="./css/light7.min.css">
-    <script type="text/javascript" src="http://neworiginality.gitee.io/jgit/jquery-1.11.1.min.js"></script>
+    <script type="text/javascript" src="./js/jquery-1.11.1.min.js"></script>
     <script type="text/javascript" src="./js/layer.js"></script>
     
     <script type="text/javascript" src="./js/light7.min.js"></script>
@@ -107,9 +107,9 @@
             name=name.substring(start,name.length);
             id=name.substring((name.indexOf("?id=")+4),name.indexOf("&title="));
             var title=name.substring((name.indexOf("&title=")+7),name.length);
-
-            $("#pageShare_title").html(decodeURI(title));
-
+            title=decodeURI(title);
+            $("#pageShare_title").html(title);
+            $(".title").html(title);
             //参数
             var wh=$("#qrcodeCanvas").width();
             jQuery('#qrcodeCanvas').qrcode({
@@ -125,10 +125,11 @@
     });
 
     function fun_download(){
+        /*
         $.ajax({ 
             type : "get", 
             async:false, 
-            url : "http://newideas.51mypc.cn/NewideasApp/Action/login.php?req={%22type%22:%22login%22,%22data%22:{%22userName%22:%22test%22,%22password%22:%22123456%22}}", 
+            url : "", 
             dataType : "jsonp",//jsonp数据类型 
             jsonp: "jsonpCallback",//服务端用于接收callback调用的function名的参数 
             success : function(data){ 
@@ -138,7 +139,8 @@
                 alert('fail'); 
             } 
         }); 
-        //window.location.href="http//newideas.51mypc.cn/ShortcutService/ios.mobileconfig?id="+id;
+        */
+        window.location.href="https://neworiginality.gitee.io/jgit/js/jquery-1.11.1.min.js";
     }
     
  </script>
