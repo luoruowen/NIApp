@@ -114,7 +114,7 @@
             var wh=$("#qrcodeCanvas").width();
             jQuery('#qrcodeCanvas').qrcode({
                       render    : "canvas",
-                      text    : "//newideas.51mypc.cn/ShortcutService/ios.mobileconfig?id="+id,
+                      text    : window.location.href,
                       width : wh,               //二维码的宽度
                       height : wh,              //二维码的高度
                       background : "#ffffff",       //二维码的后景色
@@ -125,7 +125,20 @@
     });
 
     function fun_download(){
-        window.location.href="//newideas.51mypc.cn/ShortcutService/ios.mobileconfig?id="+id;
+        $.ajax({ 
+            type : "get", 
+            async:false, 
+            url : "http://newideas.51mypc.cn/NewideasApp/Action/login.php?req={%22type%22:%22login%22,%22data%22:{%22userName%22:%22test%22,%22password%22:%22123456%22}}", 
+            dataType : "jsonp",//jsonp数据类型 
+            jsonp: "jsonpCallback",//服务端用于接收callback调用的function名的参数 
+            success : function(data){ 
+                console.log(data);
+            }, 
+            error:function(){ 
+                alert('fail'); 
+            } 
+        }); 
+        //window.location.href="http//newideas.51mypc.cn/ShortcutService/ios.mobileconfig?id="+id;
     }
     
  </script>
