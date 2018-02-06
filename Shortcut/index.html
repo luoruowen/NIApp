@@ -11,6 +11,12 @@
     <meta name="x5-fullscreen" content="true">
     <!-- UC应用模式 -->
     <meta name="browsermode" content="application">
+    <meta name="keywords" content="新创意软件工作室">
+    <meta name="description" content="手机创建快捷方式">
+  
+    <link rel="Bookmark" href="./favicon.ico" >
+    <link rel="Shortcut Icon" href="./favicon.ico" />
+
     <link rel="stylesheet" href="./css/light7.min.css">
     <script type="text/javascript" src="./js/jquery-1.11.1.min.js"></script>
     <script type="text/javascript" src="./js/layer.js"></script>
@@ -58,9 +64,8 @@
       </header>
       <div class="content">
         <div class="content-block-title" style="margin: 4.75rem .75rem .5rem;"></div>
-          <div class="card demo-card-header-pic" style="margin: 0 5rem;background: rgba(0,0,0,0);box-shadow: 0 0rem 0rem rgba(0,0,0,0);">
+          <div class="card demo-card-header-pic" style="margin: 0 4rem;background: rgba(0,0,0,0);box-shadow: 0 0rem 0rem rgba(0,0,0,0);">
             <div valign="bottom" class="card-header color-white no-border no-padding">
-            
               <span id="qrcodeCanvas" class='card-cover'></span>
             </div>
           </div>
@@ -73,7 +78,7 @@
           
           <div class="bar bar-footer" style="background-color: rgba(0,0,0,0);border-top: 1px solid rgba(0,0,0,0);">
               <p class="" style="text-align: center;margin: 0em 0;font-size: .5rem;">
-                Copyright© 2018  luoruowen新创意开发者.
+                Copyright© 2018  新创意开发 @luoruowen.
               </p>
           </div>
       </div>
@@ -106,14 +111,15 @@
             $("#pageShare_title").html(decodeURI(title));
 
             //参数
+            var wh=$("#qrcodeCanvas").width();
             jQuery('#qrcodeCanvas').qrcode({
-                 render    : "canvas",
-                 text    : "//newideas.51mypc.cn/ShortcutService/ios.mobileconfig?id="+id,
-                 width : "200",               //二维码的宽度
-                       height : "200",              //二维码的高度
-                       background : "#ffffff",       //二维码的后景色
-                       foreground : "#000000",        //二维码的前景色
-                       src: 'https://luoruowen.github.io/JGIT/img/img'+id+'.png'             //二维码中间的图片
+                      render    : "canvas",
+                      text    : "//newideas.51mypc.cn/ShortcutService/ios.mobileconfig?id="+id,
+                      width : wh,               //二维码的宽度
+                      height : wh,              //二维码的高度
+                      background : "#ffffff",       //二维码的后景色
+                      foreground : "#000000",        //二维码的前景色
+                      src: 'https://neworiginality.gitee.io/jgit/img/img'+id+'.png'             //二维码中间的图片
              }); 
         }
     });
