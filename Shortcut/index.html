@@ -55,18 +55,18 @@
 <!-- pageHelp  -->
 <div class="page no-tabbar" id='pageShare'>
       <header class="bar bar-nav">
-        <a class="button button-link button-nav pull-left back" href="http://newideas.iok.la/ShortcutService/toSUI_index.action">
+        <a class="button button-link button-nav pull-left back" href="http://newideas.iok.la/ShortcutService/toL7_index.action">
           <span class="icon icon-left"></span>
             返回
         </a>
         <h1 class='title'>快捷方式分享</h1>
-        <a class="icon icon-download pull-right" href="javascript:fun_download()"></a>
+        <a class="icon icon-download pull-right external" id="downloadId" href="http://newideas.iok.la/ShortcutService/ios.mobileconfig?id="></a>
       </header>
       <div class="content">
         <div class="content-block-title" style="margin: 4.75rem .75rem .5rem;"></div>
           <div class="card demo-card-header-pic" style="margin: 0 4rem;background: rgba(0,0,0,0);box-shadow: 0 0rem 0rem rgba(0,0,0,0);">
             <div valign="bottom" class="card-header color-white no-border no-padding">
-              <span id="qrcodeCanvas" class='card-cover'></span>
+              <span id="qrcodeCanvas" class='card-cover' onclick="install();"></span>
             </div>
           </div>
           
@@ -85,31 +85,40 @@
 </div>
 
  <script>
-    if (!!navigator.userAgent.match(/AppleWebKit.*Mobile.*/)||!!navigator.userAgent.match(/AppleWebKit/)) { 
-        //判断是否是移动设备打开。browser代码在下面
-        var ua = navigator.userAgent.toLowerCase(); //获取判断用的对象
-        if (ua.match(/MicroMessenger/i) == "micromessenger" //在微信中打开
-            || ua.match(/WeiBo/i) == "weibo" //在新浪微博客户端打开 
-            || ua.match(/QQ/i) == "qq" //在QQ空间打开
-        ) {
-            $(".tippage").show(); 
-        }else{
-            
-        }
-    }
-
+    
     var id="";
+    var isOK=false;
     $(function(){
+
+        if (!!navigator.userAgent.match(/AppleWebKit.*Mobile.*/)||!!navigator.userAgent.match(/AppleWebKit/)) { 
+            //判断是否是移动设备打开。browser代码在下面
+            var ua = navigator.userAgent.toLowerCase(); //获取判断用的对象
+            if (ua.match(/MicroMessenger/i) == "micromessenger" //在微信中打开
+                || ua.match(/WeiBo/i) == "weibo" //在新浪微博客户端打开 
+                || ua.match(/QQ/i) == "qq" //在QQ空间打开
+            ) {
+                $(".tippage").show();
+                isOK=false;
+            }else{
+                isOK=true;
+            }
+        }
+
         var name=window.location.href;
         //字符串截取
-       if(name.indexOf("?")>=0){
+        if(name.indexOf("?")>=0){
             var start=name.indexOf("?")+1;
             name=name.substring(start,name.length);
-            id=name.substring((name.indexOf("?id=")+4),name.indexOf("&title="));
+            var isAuto=name.substring((name.indexOf("?isAuto=")+8),name.indexOf("&id="));
+            id=name.substring((name.indexOf("id=")+3),name.indexOf("&title="));
             var title=name.substring((name.indexOf("&title=")+7),name.length);
             title=decodeURI(title);
             $("#pageShare_title").html(title);
             $(".title").html(title);
+            $("#downloadId").attr("href","http://newideas.iok.la/ShortcutService/ios.mobileconfig?id="+id);
+            if(isAuto=="1" && isOK){
+              $("#downloadId").click();
+            }
             //参数
             var wh=$("#qrcodeCanvas").width();
             jQuery('#qrcodeCanvas').qrcode({
@@ -119,29 +128,15 @@
                       height : wh,              //二维码的高度
                       background : "#ffffff",       //二维码的后景色
                       foreground : "#000000",        //二维码的前景色
-                      src: 'https://neworiginality.gitee.io/jgit/img/img'+id+'.png'             //二维码中间的图片
+                      //src: 'https://neworiginality.gitee.io/jgit/img/img'+id+'.png'             //二维码中间的图片
+                      src: 'http://newideas.iok.la/ShortcutService/gitFile/JGIT/img/img'+id+'.png'
              }); 
-        }
-    });
+          }
+      });
 
-    function fun_download(){
-        /*
-        $.ajax({ 
-            type : "get", 
-            async:false, 
-            url : "", 
-            dataType : "jsonp",//jsonp数据类型 
-            jsonp: "jsonpCallback",//服务端用于接收callback调用的function名的参数 
-            success : function(data){ 
-                console.log(data);
-            }, 
-            error:function(){ 
-                alert('fail'); 
-            } 
-        }); 
-        */
-        window.location.href="https://neworiginality.gitee.io/jgit/js/jquery-1.11.1.min.js";
-    }
+      function install(){
+        $("#downloadId").click();
+      }
     
  </script>
 </body>
