@@ -48,7 +48,10 @@
     });
         function gotoUrl(){
             $("#gotoUrl").attr("href","http://newideas.iok.la/ShortcutService/toL7_index.action");
-            $("#gotoUrl").click();
+            setTimeout(function () {
+                $("#gotoUrl").click();
+            }, 1000);
+            
         }
 
        function androidclick(){
