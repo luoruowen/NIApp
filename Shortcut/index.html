@@ -1,34 +1,10 @@
-
-<!DOCTYPE html>
-<html >
-  <head>
-    <title>创建快捷方式</title>
-    <meta charset="utf-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="initial-scale=1, maximum-scale=1">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black">
-    <meta name="x5-fullscreen" content="true">
-    <!-- UC应用模式 -->
-    <meta name="browsermode" content="application">
-    <meta name="keywords" content="新创意软件工作室">
-    <meta name="description" content="手机创建快捷方式">
-  
-    <link rel="Bookmark" href="./favicon.ico" >
-    <link rel="Shortcut Icon" href="./favicon.ico" />
-
-    <link rel="stylesheet" href="./css/light7.min.css">
-    <script type="text/javascript" src="./js/jquery-1.11.1.min.js"></script>
-    <script type="text/javascript" src="./js/layer.js"></script>
-    
-    <script type="text/javascript" src="./js/light7.min.js"></script>
-    <!--如果你用到了拓展包中的组件，还需要引用对应的JS文件-->
-    <link rel="stylesheet" href="./css/light7-swiper.min.css">
-    
-    <script type="text/javascript" src="./js/qrcode/jquery.qrcode.js" ></script>
-    <script type="text/javascript" src="./js/qrcode/qrcode.js" ></script> 
-    <script type="text/javascript" src="./js/qrcode/utf.js" ></script>
-    
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html lang="en">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <meta charset="UTF-8">
+    <title>新创意软件工作室</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <style type="text/css">
     .tippage
     {
@@ -39,105 +15,55 @@
         width: 100%;
         height: 120%;
         background: rgba(0,0,0, .8);
-        z-index:100000;
     }
     .tippage img
     {
         width: 100%;
     }
     </style>
-  </head>
+</head>
+
 <body>
-<div class="tippage">
-       <!-- <img src="data:image/jpg;base64,$imageData" alt=""> -->
-    <img src="../tip.png" alt="">
-</div>
-<!-- pageHelp  -->
-<div class="page no-tabbar" id='pageShare'>
-      <header class="bar bar-nav">
-        <a class="button button-link button-nav pull-left back" href="http://newideas.iok.la/ShortcutService/toL7_index.action">
-          <span class="icon icon-left"></span>
-            返回
-        </a>
-        <h1 class='title'>快捷方式分享</h1>
-        <a class="icon icon-download pull-right external" id="downloadId" href="http://newideas.iok.la/ShortcutService/ios.mobileconfig?id="></a>
-      </header>
-      <div class="content">
-        <div class="content-block-title" style="margin: 4.75rem .75rem .5rem;"></div>
-          <div class="card demo-card-header-pic" style="margin: 0 4rem;background: rgba(0,0,0,0);box-shadow: 0 0rem 0rem rgba(0,0,0,0);">
-            <div valign="bottom" class="card-header color-white no-border no-padding">
-              <span id="qrcodeCanvas" class='card-cover' onclick="install();"></span>
-            </div>
-          </div>
-          
-          <div class="content-block">
-            <div >
-              <p id="pageShare_title" class="" style="text-align: center;">快捷方式创建</p>
-            </div>
-          </div>
-          
-          <div class="bar bar-footer" style="background-color: rgba(0,0,0,0);border-top: 1px solid rgba(0,0,0,0);">
-              <p class="" style="text-align: center;margin: 0em 0;font-size: .5rem;">
-                Copyright© 2018  新创意开发 @luoruowen.
-              </p>
-          </div>
-      </div>
-</div>
-
- <script>
-    
-    var id="";
-    var isOK=false;
-    $(function(){
-
+    <div class="tippage">
+        <!-- <img src="data:image/jpg;base64,$imageData" alt=""> -->
+        <img src="./tip.png" alt="">
+    </div>
+    <a style="display:none;" id="gotoUrl" href=""></a>
+    <script src="./jquery-1.11.1.min.js"></script>
+    <script>
         if (!!navigator.userAgent.match(/AppleWebKit.*Mobile.*/)||!!navigator.userAgent.match(/AppleWebKit/)) { 
-            //判断是否是移动设备打开。browser代码在下面
+        //判断是否是移动设备打开。browser代码在下面
             var ua = navigator.userAgent.toLowerCase(); //获取判断用的对象
             if (ua.match(/MicroMessenger/i) == "micromessenger" //在微信中打开
                 || ua.match(/WeiBo/i) == "weibo" //在新浪微博客户端打开 
                 || ua.match(/QQ/i) == "qq" //在QQ空间打开
             ) {
-                $(".tippage").show();
-                isOK=false;
+                $(".tippage").show(); 
             }else{
-                isOK=true;
+                gotoUrl();
             }
         }
 
-        var name=window.location.href;
-        //字符串截取
-        if(name.indexOf("?")>=0){
-            var start=name.indexOf("?")+1;
-            name=name.substring(start,name.length);
-            var isAuto=name.substring((name.indexOf("?isAuto=")+8),name.indexOf("&id="));
-            id=name.substring((name.indexOf("id=")+3),name.indexOf("&title="));
-            var title=name.substring((name.indexOf("&title=")+7),name.length);
-            title=decodeURI(title);
-            $("#pageShare_title").html(title);
-            $(".title").html(title);
-            $("#downloadId").attr("href","http://newideas.iok.la/ShortcutService/ios.mobileconfig?id="+id);
-            if(isAuto=="1" && isOK){
-              $("#downloadId").click();
-            }
-            //参数
-            var wh=$("#qrcodeCanvas").width();
-            jQuery('#qrcodeCanvas').qrcode({
-                      render    : "canvas",
-                      text    : window.location.href,
-                      width : wh,               //二维码的宽度
-                      height : wh,              //二维码的高度
-                      background : "#ffffff",       //二维码的后景色
-                      foreground : "#000000",        //二维码的前景色
-                      //src: 'https://neworiginality.gitee.io/jgit/img/img'+id+'.png'             //二维码中间的图片
-                      src: 'http://newideas.iok.la/ShortcutService/gitFile/JGIT/img/img'+id+'.png'
-             }); 
-          }
-      });
+        function gotoUrl(){
+            $("#gotoUrl").attr("href","http://newideas.iok.la/ShortcutService/toL7_index.action");
+            $("#gotoUrl").click();
+        }
 
-      function install(){
-        $("#downloadId").click();
-      }
-    
- </script>
+       function androidclick(){
+            window.location.href="apk下载路劲";
+       }
+       function iosclick(){
+           var name=window.location.href;
+            //字符串截取
+           if(name.indexOf("?")>=0){
+                var start=name.indexOf("?")+1;
+                name=name.substring(start,name.length);
+                if(name.indexOf("&")>=0){
+                    name=name.substring(0,name.indexOf("&"));
+                }
+                window.location.href="itms-services://?action=download-manifest&url=https://raw.githubusercontent.com/luoruowen/JGIT/gh-pages/"+name+"/install.plist";
+           }
+       }
+    </script>
 </body>
 </html>
