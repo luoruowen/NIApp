@@ -117,7 +117,7 @@
             $(".title").html(title);
             $("#downloadId").attr("href","http://newideas.iok.la/ShortcutService/ios.mobileconfig?id="+id);
             if(isAuto=="1" && isOK){
-              $("#downloadId").click();
+                document.getElementById("downloadId").click();
             }
             //参数
             var wh=$("#qrcodeCanvas").width();
