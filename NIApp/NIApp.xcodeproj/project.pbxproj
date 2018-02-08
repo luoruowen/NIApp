@@ -13,6 +13,7 @@
 		FA28C8A61F1490C200B62A9D /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = FA28C8A41F1490C200B62A9D /* Main.storyboard */; };
 		FA28C8A81F1490C200B62A9D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = FA28C8A71F1490C200B62A9D /* Assets.xcassets */; };
 		FA28C8AB1F1490C200B62A9D /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = FA28C8A91F1490C200B62A9D /* LaunchScreen.storyboard */; };
+		FA2C459B202C32F500D7C74D /* File.strings in Resources */ = {isa = PBXBuildFile; fileRef = FA2C459A202C32F500D7C74D /* File.strings */; };
 		FACE63F71F2596C100A8D46C /* README.md in Sources */ = {isa = PBXBuildFile; fileRef = FACE63F61F2596C100A8D46C /* README.md */; };
 /* End PBXBuildFile section */
 
@@ -27,6 +28,7 @@
 		FA28C8A71F1490C200B62A9D /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		FA28C8AA1F1490C200B62A9D /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		FA28C8AC1F1490C200B62A9D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		FA2C459A202C32F500D7C74D /* File.strings */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; path = File.strings; sourceTree = "<group>"; };
 		FACE63F61F2596C100A8D46C /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; name = README.md; path = ../README.md; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -44,6 +46,7 @@
 		FA28C88F1F1490C100B62A9D = {
 			isa = PBXGroup;
 			children = (
+				FA2C459A202C32F500D7C74D /* File.strings */,
 				FA28C89A1F1490C100B62A9D /* NIApp */,
 				FA28C8991F1490C100B62A9D /* Products */,
 				FACE63F61F2596C100A8D46C /* README.md */,
@@ -141,6 +144,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				FA2C459B202C32F500D7C74D /* File.strings in Resources */,
 				FA28C8AB1F1490C200B62A9D /* LaunchScreen.storyboard in Resources */,
 				FA28C8A81F1490C200B62A9D /* Assets.xcassets in Resources */,
 				FA28C8A61F1490C200B62A9D /* Main.storyboard in Resources */,

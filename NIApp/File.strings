@@ -1,0 +1,4273 @@
+package com.newland.idc.action.alarmManage;
+
+import com.google.gson.Gson;
+import com.newland.alarm.management.base.event.impl.NotifyAckStateChangedAlarmEventImpl;
+import com.newland.alarm.management.base.event.impl.NotifyClearedAlarmEventImpl;
+import com.newland.alarm.management.base.event.impl.NotifyNewAlarmEventImpl;
+import com.newland.alarm.management.base.impl.InteractionRecordImpl;
+import com.newland.dcim.sm.entity.SmRight;
+import com.newland.dcim.sm.service.RoleRightService;
+import com.newland.idc.service.AlarmService;
+import com.newland.idc.service.FilterService;
+import com.newland.idc.service.ProducerService;
+import com.newland.idc.util.DBUtil;
+import com.newland.idc.util.ExcelPOIUtil;
+import com.newland.idc.util.KeyValue;
+import com.newland.idc.util.PageSpliterBean;
+import com.newland.idc.util.QuerySelectOptions;
+import com.opensymphony.xwork2.ActionSupport;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.io.PrintWriter;
+import java.net.URLEncoder;
+import java.nio.channels.Channel;
+import java.sql.SQLException;
+import java.text.DateFormat;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Collections;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import javax.jms.Destination;
+import javax.servlet.ServletOutputStream;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import javax.servlet.http.HttpSession;
+import jxl.write.WriteException;
+import jxl.write.biff.RowsExceededException;
+import org.apache.commons.lang.StringUtils;
+import org.apache.log4j.Logger;
+import org.apache.struts2.ServletActionContext;
+import org.jasig.cas.client.authentication.AttributePrincipal;
+import org.jasig.cas.client.validation.Assertion;
+import org.springframework.beans.factory.annotation.Autowired;
+
+public class AlarmManageAction
+extends ActionSupport
+{
+    private static final Logger log = Logger.getLogger(AlarmManageAction.class);
+    private AlarmService alarmService;
+    private FilterService filterService;
+    private String orderType;
+    private String orderColumn;
+    private String notificationId;
+    private String notificationIds;
+    private String sysIntIds;
+    private int PAGE_NUM = 10;
+    private int iPageNum;
+    private String pageNum;
+    private PageSpliterBean pageSpliter;
+    private String pageHtml;
+    private String perPage;
+    private String ex_type;
+    private String sendPhone;
+    private String sendMessage;
+    private String reason;
+    private String severity;
+    private String devType;
+    private String createUserName;
+    private String createDate;
+    private String searchState;
+    private String beginTime;
+    private String endTime;
+    private String additionInfo;
+    private String probableCause;
+    private String objectName;
+    private String count_min;
+    private String count_max;
+    private String timeType;
+    private String timegrade;
+    private String searchTime;
+    private List<HashMap<String, String>> resultList;
+    private List<HashMap<String, String>> devTypeList;
+    private ProducerService producerService;
+    private Destination destination;
+    private String jsonTree;
+    private List<HashMap<String, String>> filterList;
+    private List newAlarmList;
+    private List ackAlarmList;
+    private List clearAlarmList;
+    private List alarmCountList;
+    private List<HashMap<String, String>> noCpsClearAlarmList;
+    private List relatedAlarmList;
+    private Integer alarmStatus;
+    private String webSocketIp;
+    private String webSocketPort;
+    private Channel channel;
+    private String filterId;
+    private String userId;
+    private HashMap<String, String> alarmMap;
+    private HashMap<String, String> alarmMapBOMC;
+    private HashMap<String, String> alarmInitData;
+    private String totalAlarmCount = "10000";
+    private String globalAlarmStatus;
+    private String isAlarmSound;
+    private String billId;
+    private List<Long> sumBySeverityList;
+    private List<Long> sumByLocationList;
+    private List<Long> sumByTimeList;
+    private int severityFlag;
+    private int sendFlag;
+    private int sumOfAck;
+    private int flag;
+    private boolean right_1 = false;
+    private boolean right_2 = false;
+    private boolean right_3 = false;
+    private boolean right_4 = false;
+    private boolean right_5 = false;
+    private int occurCount;
+    private int alarmId;
+    private String imgString;
+    private String assignStatus;
+    private String clearStatus;
+    @Autowired
+    private RoleRightService rightService;
+    
+    public void alarmStatu()
+    {
+        HttpServletResponse response = ServletActionContext.getResponse();
+        response.setCharacterEncoding("UTF-8");
+        response.setHeader("Content-type", "text/html;charset=UTF-8");
+        PrintWriter out = null;
+        try
+        {
+            String[] recordArray = this.notificationIds.split(",");
+            String ids = "";
+            int sumOfAll = 0;
+            for (int i = 0; i < recordArray.length; i++)
+            {
+                String[] recordInfo = recordArray[i].split("\\|");
+                String notificationId = recordInfo[0];
+                if (ids == "") {
+                    ids = ids + notificationId;
+                } else {
+                    ids = ids + "," + notificationId;
+                }
+                sumOfAll++;
+            }
+            this.sumOfAck = this.alarmService.alarmStatu(ids);
+            if (this.sumOfAck == 0) {
+                this.flag = 0;
+            } else if (sumOfAll == this.sumOfAck) {
+                this.flag = 1;
+            } else {
+                this.flag = 2;
+            }
+            out = response.getWriter();
+            Gson gson = new Gson();
+            String jsonObj = gson.toJson(Integer.valueOf(this.flag));
+            out.print(jsonObj);
+        }
+        catch (Exception e)
+        {
+            e.printStackTrace();
+        }
+    }
+    
+    public void loadSumByLocation()
+    {
+        this.sumByLocationList = this.alarmService.loadSumByLocation(this.severityFlag);
+        HttpServletResponse response = ServletActionContext.getResponse();
+        response.setCharacterEncoding("UTF-8");
+        response.setHeader("Content-type", "text/html;charset=UTF-8");
+        PrintWriter out = null;
+        try
+        {
+            out = response.getWriter();
+        }
+        catch (IOException e)
+        {
+            e.printStackTrace();
+        }
+        Gson gson = new Gson();
+        String jsonObj = gson.toJson(this.sumByLocationList);
+        out.print(jsonObj);
+    }
+    
+    public void loadSumBySeverity()
+    {
+        this.sumBySeverityList = this.alarmService.loadSumBySeverity(this.severityFlag);
+        HttpServletResponse response = ServletActionContext.getResponse();
+        response.setCharacterEncoding("UTF-8");
+        response.setHeader("Content-type", "text/html;charset=UTF-8");
+        PrintWriter out = null;
+        try
+        {
+            out = response.getWriter();
+        }
+        catch (IOException e)
+        {
+            e.printStackTrace();
+        }
+        Gson gson = new Gson();
+        String jsonObj = gson.toJson(this.sumBySeverityList);
+        out.print(jsonObj);
+    }
+    
+    public void loadSumByTime()
+    {
+        this.sumByTimeList = this.alarmService.loadSumByTime(this.severityFlag);
+        HttpServletResponse response = ServletActionContext.getResponse();
+        response.setCharacterEncoding("UTF-8");
+        response.setHeader("Content-type", "text/html;charset=UTF-8");
+        PrintWriter out = null;
+        try
+        {
+            out = response.getWriter();
+        }
+        catch (IOException e)
+        {
+            e.printStackTrace();
+        }
+        Gson gson = new Gson();
+        String jsonObj = gson.toJson(this.sumByTimeList);
+        out.print(jsonObj);
+    }
+    
+    public String alarmMenu()
+    {
+        this.filterList = this.filterService.queryFilterByTypeList("15");
+        StringBuffer sbf = new StringBuffer();
+        sbf.append("[{'id':-2, 'pId':-1, 'name':'������������', 'icon':'../images/filter/logic.gif', 'open':true},");
+        sbf.append("{'id':0, 'pId':-2, 'name':'������������', 'icon':'../images/filter/leaf.gif'},");
+        sbf.append("{'id':-3, 'pId':-1, 'name':'���������������', 'icon':'../images/filter/logic.gif', 'open':false},");
+        for (int i = 0; i < this.filterList.size(); i++)
+        {
+            HashMap<String, String> filter = (HashMap)this.filterList.get(i);
+            if (i == this.filterList.size() - 1) {
+                sbf.append("{'id':" + (String)filter.get("SYS_INT_ID") + ", 'pId':-3, 'name':'" + (String)filter.get("FL_NAME") + "', 'icon':'../images/filter/leaf.gif'}");
+            } else {
+                sbf.append("{'id':" + (String)filter.get("SYS_INT_ID") + ", 'pId':-3, 'name':'" + (String)filter.get("FL_NAME") + "', 'icon':'../images/filter/leaf.gif'},");
+            }
+        }
+        sbf.append("]");
+        this.jsonTree = sbf.toString();
+        return "success";
+    }
+    
+    public String alarmList()
+    {
+        HttpServletRequest request = ServletActionContext.getRequest();
+        Object object = request.getSession().getAttribute("_const_cas_assertion_");
+        Assertion assertion = (Assertion)object;
+        String userName = assertion.getPrincipal().getName();
+        List<SmRight> list = this.rightService.loadButtonRight(userName, 920301L);
+        for (int i = 0; i < list.size(); i++)
+        {
+            SmRight right = (SmRight)list.get(i);
+            if (right.getRightId().intValue() == 1) {
+                this.right_1 = right.getChecked().booleanValue();
+            }
+            if (right.getRightId().intValue() == 2) {
+                this.right_2 = right.getChecked().booleanValue();
+            }
+            if (right.getRightId().intValue() == 3) {
+                this.right_3 = right.getChecked().booleanValue();
+            }
+            if (right.getRightId().intValue() == 4) {
+                this.right_4 = right.getChecked().booleanValue();
+            }
+            if (right.getRightId().intValue() == 5) {
+                this.right_5 = right.getChecked().booleanValue();
+            }
+        }
+        this.userId = getUserid();
+        try
+        {
+            this.webSocketIp = PropertiesConfig2.config.getProperty("WEBSOCKET.ip");
+            this.webSocketPort = PropertiesConfig2.config.getProperty("WEBSOCKET.port");
+        }
+        catch (Exception e)
+        {
+            log.error("������websocket���������������\n" + e.getMessage());
+        }
+        if ((this.filterId != null) && (!"".equals(this.filterId))) {
+            "0".equals(this.filterId);
+        }
+        return "success";
+    }
+    
+    public String alarmDetailForBomc()
+    {
+        this.alarmMapBOMC = this.alarmService.loadDetailCondition(this.alarmId);
+        this.alarmStatus = Integer.valueOf(Integer.parseInt((String)this.alarmMapBOMC.get("status")));
+        this.notificationId = ((String)this.alarmMapBOMC.get("notification_id"));
+        this.alarmMap = this.alarmService.queryAlarmDetail(this.alarmStatus, this.notificationId);
+        
+        String billId = (String)this.alarmMap.get("bill_id");
+        if ((billId != null) && (!"".equals(billId)))
+        {
+            String sql = "SELECT CONCAT(t.SYS_INT_ID,'') as docid,CONCAT(t.PROCESSSID) as flowinstanceid, CONCAT(t.WD_SERIALNO) as wd_serialno, CONCAT(t.CREATE_TIME) as wd_create_time FROM T_ME_BS_WD t,T_WD_EVENT_MANAGE t2 where t.SYS_INT_ID = t2.sys_int_id and t2.ALARM_ID = " +
+            
+            this.notificationId;
+            DBUtil dbUtil = new DBUtil();
+            try
+            {
+                List<HashMap<String, String>> resultList = dbUtil.executeQuery(sql);
+                if (resultList.size() > 0)
+                {
+                    HashMap<String, String> resultMap = (HashMap)resultList.get(0);
+                    this.alarmMap.put("docid", (String)resultMap.get("docid"));
+                    this.alarmMap.put("flowinstanceid", (String)resultMap.get("flowinstanceid"));
+                    this.alarmMap.put("wd_create_time", (String)resultMap.get("wd_create_time"));
+                }
+            }
+            catch (SQLException e)
+            {
+                e.printStackTrace();
+            }
+        }
+        queryRelatedAlarmList(this.alarmStatus.intValue());
+        return "success";
+    }
+    
+    public String alarmDetail()
+    {
+        this.alarmMap = this.alarmService.queryAlarmDetail(this.alarmStatus, this.notificationId);
+        
+        String billId = (String)this.alarmMap.get("bill_id");
+        if (((String)this.alarmMap.get("object_name")).contains("###")) {
+            this.alarmMap.put("object_name", (String)this.alarmMap.get("new_object_name"));
+        }
+        if ((billId != null) && (!"".equals(billId)))
+        {
+            String sql = "SELECT CONCAT(t.SYS_INT_ID,'') as docid,CONCAT(t.PROCESSSID) as flowinstanceid, CONCAT(t.WD_SERIALNO) as wd_serialno, CONCAT(t.CREATE_TIME) as wd_create_time FROM T_ME_BS_WD t,T_WD_EVENT_MANAGE t2 where t.SYS_INT_ID = t2.sys_int_id and t2.ALARM_ID = " +
+            
+            this.notificationId;
+            DBUtil dbUtil = new DBUtil();
+            try
+            {
+                List<HashMap<String, String>> resultList = dbUtil.executeQuery(sql);
+                if (resultList.size() > 0)
+                {
+                    HashMap<String, String> resultMap = (HashMap)resultList.get(0);
+                    this.alarmMap.put("docid", (String)resultMap.get("docid"));
+                    this.alarmMap.put("flowinstanceid", (String)resultMap.get("flowinstanceid"));
+                    this.alarmMap.put("wd_create_time", (String)resultMap.get("wd_create_time"));
+                }
+            }
+            catch (SQLException e)
+            {
+                e.printStackTrace();
+            }
+        }
+        queryRelatedAlarmList(this.alarmStatus.intValue());
+        return "success";
+    }
+    
+    public String alarmDetailNew()
+    {
+        this.alarmMap = this.alarmService.queryAlarmDetail(this.alarmStatus, this.notificationId);
+        
+        String billId = (String)this.alarmMap.get("bill_id");
+        if (((String)this.alarmMap.get("object_name")).contains("###")) {
+            this.alarmMap.put("object_name", (String)this.alarmMap.get("new_object_name"));
+        }
+        if ((billId != null) && (!"".equals(billId)))
+        {
+            String sql = "SELECT CONCAT(t.SYS_INT_ID,'') as docid,CONCAT(t.PROCESSSID) as flowinstanceid, CONCAT(t.WD_SERIALNO) as wd_serialno, CONCAT(t.CREATE_TIME) as wd_create_time FROM T_ME_BS_WD t,T_WD_EVENT_MANAGE t2 where t.SYS_INT_ID = t2.sys_int_id and t2.ALARM_ID = " +
+            
+            this.notificationId;
+            DBUtil dbUtil = new DBUtil();
+            try
+            {
+                List<HashMap<String, String>> resultList = dbUtil.executeQuery(sql);
+                if (resultList.size() > 0)
+                {
+                    HashMap<String, String> resultMap = (HashMap)resultList.get(0);
+                    this.alarmMap.put("docid", (String)resultMap.get("docid"));
+                    this.alarmMap.put("flowinstanceid", (String)resultMap.get("flowinstanceid"));
+                    this.alarmMap.put("wd_create_time", (String)resultMap.get("wd_create_time"));
+                }
+            }
+            catch (SQLException e)
+            {
+                e.printStackTrace();
+            }
+        }
+        return "success";
+    }
+    
+    public void ajaxGetWdDetail()
+    {
+        HashMap<String, String> wdMap = new HashMap();
+        String sql = "SELECT CONCAT(t.SYS_INT_ID,'') as docid,CONCAT(t.PROCESSSID) as flowinstanceid, CONCAT(t.WD_SERIALNO) as wd_serialno, CONCAT(t.CREATE_TIME) as wd_create_time FROM T_ME_BS_WD t,T_WD_EVENT_MANAGE t2 where t.SYS_INT_ID = t2.sys_int_id and t2.SYS_INT_ID = " +
+        
+        this.billId;
+        String docid = "";
+        String flowinstanceid = "";
+        DBUtil dbUtil = new DBUtil();
+        try
+        {
+            List<HashMap<String, String>> resultList = dbUtil.executeQuery(sql);
+            if (resultList.size() > 0)
+            {
+                HashMap<String, String> resultMap = (HashMap)resultList.get(0);
+                docid = (String)resultMap.get("docid");
+                flowinstanceid = (String)resultMap.get("flowinstanceid");
+            }
+        }
+        catch (SQLException e)
+        {
+            e.printStackTrace();
+        }
+        wdMap.put("docid", docid);
+        wdMap.put("flowinstanceid", flowinstanceid);
+        HttpServletResponse response = ServletActionContext.getResponse();
+        response.setCharacterEncoding("UTF-8");
+        response.setHeader("Content-type", "text/html;charset=UTF-8");
+        PrintWriter out = null;
+        try
+        {
+            out = response.getWriter();
+        }
+        catch (IOException e)
+        {
+            e.printStackTrace();
+        }
+        Gson gson = new Gson();
+        String jsonObj = gson.toJson(wdMap);
+        out.print(jsonObj);
+    }
+    
+    public void queryRelatedAlarmList(int alarmStatus)
+    {
+        StringBuffer conditions = new StringBuffer();
+        
+        String orderCondition = "";
+        String Status = "";
+        if (alarmStatus == 0) {
+            Status = " and t.status in(0,1)";
+        } else if (alarmStatus == 1) {
+            Status = " and t.status=1";
+        } else if (alarmStatus == 2) {
+            Status = " and t.status in(0,1)";
+        }
+        String mycondition = " AND t.status_info = '" + this.notificationId.trim() + "' " + Status;
+        
+        conditions.append(mycondition);
+        if ((this.orderColumn != null) && (!"".equals(this.orderColumn))) {
+            orderCondition = " order by " + this.orderColumn + " " + this.orderType;
+        }
+        conditions.append(orderCondition);
+        
+        savePageNum();
+        int index = (this.iPageNum - 1) * this.PAGE_NUM;
+        if (index < 0) {
+            index = 0;
+        }
+        String countConditions = conditions.toString();
+        int rowCount = this.alarmService.getResultCount(countConditions);
+        if ((index != 0) && (rowCount < index + 1))
+        {
+            this.iPageNum -= 1;
+            this.pageNum = this.iPageNum;
+            index = (this.iPageNum - 1) * this.PAGE_NUM;
+        }
+        this.relatedAlarmList = this.alarmService.queryRelatedAlarmList(conditions.toString(), index, this.PAGE_NUM);
+        
+        this.pageSpliter = new PageSpliterBean(this.iPageNum, this.PAGE_NUM, rowCount, this.relatedAlarmList);
+        this.pageHtml = this.pageSpliter.getPageSpliterHtml();
+    }
+    
+    public void loadAlarmList()
+    {
+        List alarmList = null;
+        if ((this.filterId == null) || ("".equals(this.filterId)) || ("0".equals(this.filterId)))
+        {
+            alarmList = monitorAll(this.alarmStatus.intValue());
+            this.alarmStatus.intValue();
+        }
+        else
+        {
+            alarmList = monitorFilter(this.filterId, this.alarmStatus.intValue());
+        }
+        if (alarmList == null) {
+            alarmList = new ArrayList();
+        }
+        Set set = new HashSet();
+        for (int i = 0; i < alarmList.size(); i++)
+        {
+            if ((alarmList.get(i) instanceof NotifyNewAlarmEventImpl))
+            {
+                NotifyNewAlarmEventImpl obj = (NotifyNewAlarmEventImpl)alarmList.get(i);
+                set.add(obj.getStatusInfo());
+            }
+            if ((alarmList.get(i) instanceof NotifyAckStateChangedAlarmEventImpl))
+            {
+                NotifyAckStateChangedAlarmEventImpl obj = (NotifyAckStateChangedAlarmEventImpl)alarmList.get(i);
+                set.add(obj.getStatusInfo());
+            }
+            if ((alarmList.get(i) instanceof NotifyClearedAlarmEventImpl))
+            {
+                NotifyClearedAlarmEventImpl obj = (NotifyClearedAlarmEventImpl)alarmList.get(i);
+                set.add(obj.getStatusInfo());
+            }
+        }
+        List setList = new ArrayList();
+        Iterator<String> it = set.iterator();
+        while (it.hasNext()) {
+            setList.add(it.next());
+        }
+        List temp = new ArrayList();
+        List tempElse = new ArrayList();
+        for (int i = 0; i < alarmList.size(); i++)
+        {
+            if ((alarmList.get(i) instanceof NotifyNewAlarmEventImpl))
+            {
+                NotifyNewAlarmEventImpl obj = (NotifyNewAlarmEventImpl)alarmList.get(i);
+                if (setList.contains(obj.getNotificationId())) {
+                    temp.add(obj);
+                } else {
+                    tempElse.add(obj);
+                }
+            }
+            if ((alarmList.get(i) instanceof NotifyAckStateChangedAlarmEventImpl))
+            {
+                NotifyAckStateChangedAlarmEventImpl obj = (NotifyAckStateChangedAlarmEventImpl)alarmList.get(i);
+                if (setList.contains(obj.getNotificationId())) {
+                    temp.add(obj);
+                } else {
+                    tempElse.add(obj);
+                }
+            }
+            if ((alarmList.get(i) instanceof NotifyClearedAlarmEventImpl))
+            {
+                NotifyClearedAlarmEventImpl obj = (NotifyClearedAlarmEventImpl)alarmList.get(i);
+                if (setList.contains(obj.getNotificationId())) {
+                    temp.add(obj);
+                } else {
+                    tempElse.add(obj);
+                }
+            }
+        }
+        for (int i = 0; i < temp.size(); i++)
+        {
+            if ((temp.get(i) instanceof NotifyNewAlarmEventImpl))
+            {
+                NotifyNewAlarmEventImpl obj = (NotifyNewAlarmEventImpl)temp.get(i);
+                NotifyNewAlarmEventImpl objElseTemp = null;
+                NotifyAckStateChangedAlarmEventImpl objElseTempAck = null;
+                NotifyClearedAlarmEventImpl objElseTempClear = null;
+                int flag = 0;
+                int flagAck = 0;
+                int flagClear = 0;
+                for (int j = 0; j < tempElse.size(); j++)
+                {
+                    if ((tempElse.get(j) instanceof NotifyNewAlarmEventImpl))
+                    {
+                        NotifyNewAlarmEventImpl objElse = (NotifyNewAlarmEventImpl)tempElse.get(j);
+                        if (objElse.getStatusInfo().equals(obj.getNotificationId()))
+                        {
+                            Date objTime = obj.getEventTime();
+                            Date objTimeElse = objElse.getEventTime();
+                            
+                            String probableCause = objElse.getProbableCause();
+                            if (flag == 0)
+                            {
+                                if ((objTimeElse.after(objTime)) || (objTimeElse.compareTo(objTime) == 0))
+                                {
+                                    obj.setOccurCount(objElse.getOccurCount());
+                                    DateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+                                    obj.setAssignRule(df.format(objTimeElse));
+                                    obj.setEventTime(objTimeElse);
+                                    obj.setProbableCause(probableCause);
+                                    
+                                    flag = 1;
+                                }
+                            }
+                            else if ((!"".equals(objElseTemp)) && ((objTimeElse.after(objTime)) || (objTimeElse.compareTo(objTime) == 0)) && (
+                            (objTimeElse.after(objElseTemp.getEventTime())) || (objTimeElse.compareTo(objElseTemp.getEventTime()) == 0)))
+                            {
+                                obj.setOccurCount(objElse.getOccurCount());
+                                DateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+                                obj.setAssignRule(df.format(objTimeElse));
+                                obj.setEventTime(objTimeElse);
+                                obj.setProbableCause(probableCause);
+                            }
+                            objElseTemp = objElse;
+                        }
+                    }
+                    if ((tempElse.get(j) instanceof NotifyAckStateChangedAlarmEventImpl))
+                    {
+                        NotifyAckStateChangedAlarmEventImpl objElse = (NotifyAckStateChangedAlarmEventImpl)tempElse.get(j);
+                        if (objElse.getStatusInfo().equals(obj.getNotificationId()))
+                        {
+                            Date objTime = obj.getEventTime();
+                            Date objTimeElse = objElse.getEventTime();
+                            
+                            String probableCause = objElse.getProbableCause();
+                            if (flagAck == 0)
+                            {
+                                if ((objTimeElse.after(objTime)) || (objTimeElse.compareTo(objTime) == 0))
+                                {
+                                    obj.setOccurCount(objElse.getOccurCount());
+                                    DateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+                                    obj.setAssignRule(df.format(objTimeElse));
+                                    obj.setEventTime(objTimeElse);
+                                    obj.setProbableCause(probableCause);
+                                    
+                                    flagAck = 1;
+                                }
+                            }
+                            else if ((!"".equals(objElseTempAck)) && ((objTimeElse.after(objTime)) || (objTimeElse.compareTo(objTime) == 0)) && (
+                            (objTimeElse.after(objElseTempAck.getEventTime())) || (objTimeElse.compareTo(objElseTempAck.getEventTime()) == 0)))
+                            {
+                                obj.setOccurCount(objElse.getOccurCount());
+                                DateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+                                obj.setAssignRule(df.format(objTimeElse));
+                                obj.setEventTime(objTimeElse);
+                                obj.setProbableCause(probableCause);
+                            }
+                            objElseTempAck = objElse;
+                        }
+                    }
+                    if ((tempElse.get(j) instanceof NotifyClearedAlarmEventImpl))
+                    {
+                        NotifyClearedAlarmEventImpl objElse = (NotifyClearedAlarmEventImpl)tempElse.get(j);
+                        if (objElse.getStatusInfo().equals(obj.getNotificationId()))
+                        {
+                            Date objTime = obj.getEventTime();
+                            Date objTimeElse = objElse.getEventTime();
+                            
+                            String probableCause = objElse.getProbableCause();
+                            if (flagClear == 0)
+                            {
+                                if ((objTimeElse.after(objTime)) || (objTimeElse.compareTo(objTime) == 0))
+                                {
+                                    obj.setOccurCount(objElse.getOccurCount());
+                                    DateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+                                    obj.setAssignRule(df.format(objTimeElse));
+                                    obj.setEventTime(objTimeElse);
+                                    obj.setProbableCause(probableCause);
+                                    
+                                    flagClear = 1;
+                                }
+                            }
+                            else if ((!"".equals(objElseTempClear)) && ((objTimeElse.after(objTime)) || (objTimeElse.compareTo(objTime) == 0)) && (
+                            (objTimeElse.after(objElseTempClear.getEventTime())) || (objTimeElse.compareTo(objElseTempClear.getEventTime()) == 0)))
+                            {
+                                obj.setOccurCount(objElse.getOccurCount());
+                                DateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+                                obj.setAssignRule(df.format(objTimeElse));
+                                obj.setEventTime(objTimeElse);
+                                obj.setProbableCause(probableCause);
+                            }
+                            objElseTempClear = objElse;
+                        }
+                    }
+                }
+            }
+            if ((temp.get(i) instanceof NotifyAckStateChangedAlarmEventImpl))
+            {
+                NotifyAckStateChangedAlarmEventImpl obj = (NotifyAckStateChangedAlarmEventImpl)temp.get(i);
+                NotifyNewAlarmEventImpl objElseTemp = null;
+                NotifyAckStateChangedAlarmEventImpl objElseTempAck = null;
+                NotifyClearedAlarmEventImpl objElseTempClear = null;
+                int flag = 0;
+                int flagAck = 0;
+                int flagClear = 0;
+                for (int j = 0; j < tempElse.size(); j++)
+                {
+                    if ((tempElse.get(j) instanceof NotifyNewAlarmEventImpl))
+                    {
+                        NotifyNewAlarmEventImpl objElse = (NotifyNewAlarmEventImpl)tempElse.get(j);
+                        if (objElse.getStatusInfo().equals(obj.getNotificationId()))
+                        {
+                            Date objTime = obj.getEventTime();
+                            Date objTimeElse = objElse.getEventTime();
+                            
+                            String probableCause = objElse.getProbableCause();
+                            if (flag == 0)
+                            {
+                                if ((objTimeElse.after(objTime)) || (objTimeElse.compareTo(objTime) == 0))
+                                {
+                                    obj.setOccurCount(objElse.getOccurCount());
+                                    DateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+                                    obj.setAssignRule(df.format(objTimeElse));
+                                    obj.setEventTime(objTimeElse);
+                                    obj.setProbableCause(probableCause);
+                                    
+                                    flag = 1;
+                                }
+                            }
+                            else if ((!"".equals(objElseTemp)) && ((objTimeElse.after(objTime)) || (objTimeElse.compareTo(objTime) == 0)) && (
+                            (objTimeElse.after(objElseTemp.getEventTime())) || (objTimeElse.compareTo(objElseTemp.getEventTime()) == 0)))
+                            {
+                                obj.setOccurCount(objElse.getOccurCount());
+                                DateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+                                obj.setAssignRule(df.format(objTimeElse));
+                                obj.setEventTime(objTimeElse);
+                                obj.setProbableCause(probableCause);
+                            }
+                            objElseTemp = objElse;
+                        }
+                    }
+                    if ((tempElse.get(j) instanceof NotifyAckStateChangedAlarmEventImpl))
+                    {
+                        NotifyAckStateChangedAlarmEventImpl objElse = (NotifyAckStateChangedAlarmEventImpl)tempElse.get(j);
+                        if (objElse.getStatusInfo().equals(obj.getNotificationId()))
+                        {
+                            Date objTime = obj.getEventTime();
+                            Date objTimeElse = objElse.getEventTime();
+                            
+                            String probableCause = objElse.getProbableCause();
+                            if (flagAck == 0)
+                            {
+                                if ((objTimeElse.after(objTime)) || (objTimeElse.compareTo(objTime) == 0))
+                                {
+                                    obj.setOccurCount(objElse.getOccurCount());
+                                    DateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+                                    obj.setAssignRule(df.format(objTimeElse));
+                                    obj.setEventTime(objTimeElse);
+                                    obj.setProbableCause(probableCause);
+                                    
+                                    flagAck = 1;
+                                }
+                            }
+                            else if ((!"".equals(objElseTempAck)) && ((objTimeElse.after(objTime)) || (objTimeElse.compareTo(objTime) == 0)) && (
+                            (objTimeElse.after(objElseTempAck.getEventTime())) || (objTimeElse.compareTo(objElseTempAck.getEventTime()) == 0)))
+                            {
+                                obj.setOccurCount(objElse.getOccurCount());
+                                obj.setEventTime(objTimeElse);
+                                DateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+                                obj.setAssignRule(df.format(objTimeElse));
+                                obj.setProbableCause(probableCause);
+                            }
+                            objElseTempAck = objElse;
+                        }
+                    }
+                    if ((tempElse.get(j) instanceof NotifyClearedAlarmEventImpl))
+                    {
+                        NotifyClearedAlarmEventImpl objElse = (NotifyClearedAlarmEventImpl)tempElse.get(j);
+                        if (objElse.getStatusInfo().equals(obj.getNotificationId()))
+                        {
+                            Date objTime = obj.getEventTime();
+                            Date objTimeElse = objElse.getEventTime();
+                            
+                            String probableCause = objElse.getProbableCause();
+                            if (flagClear == 0)
+                            {
+                                if ((objTimeElse.after(objTime)) || (objTimeElse.compareTo(objTime) == 0))
+                                {
+                                    obj.setOccurCount(objElse.getOccurCount());
+                                    DateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+                                    obj.setAssignRule(df.format(objTimeElse));
+                                    obj.setEventTime(objTimeElse);
+                                    obj.setProbableCause(probableCause);
+                                    
+                                    flagClear = 1;
+                                }
+                            }
+                            else if ((!"".equals(objElseTempClear)) && ((objTimeElse.after(objTime)) || (objTimeElse.compareTo(objTime) == 0)) && (
+                            (objTimeElse.after(objElseTempClear.getEventTime())) || (objTimeElse.compareTo(objElseTempClear.getEventTime()) == 0)))
+                            {
+                                obj.setOccurCount(objElse.getOccurCount());
+                                DateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+                                obj.setAssignRule(df.format(objTimeElse));
+                                obj.setEventTime(objTimeElse);
+                                obj.setProbableCause(probableCause);
+                            }
+                            objElseTempClear = objElse;
+                        }
+                    }
+                }
+            }
+            if ((temp.get(i) instanceof NotifyClearedAlarmEventImpl))
+            {
+                NotifyClearedAlarmEventImpl obj = (NotifyClearedAlarmEventImpl)temp.get(i);
+                NotifyNewAlarmEventImpl objElseTemp = null;
+                NotifyAckStateChangedAlarmEventImpl objElseTempAck = null;
+                NotifyClearedAlarmEventImpl objElseTempClear = null;
+                int flag = 0;
+                int flagAck = 0;
+                int flagClear = 0;
+                for (int j = 0; j < tempElse.size(); j++)
+                {
+                    if ((tempElse.get(j) instanceof NotifyNewAlarmEventImpl))
+                    {
+                        NotifyNewAlarmEventImpl objElse = (NotifyNewAlarmEventImpl)tempElse.get(j);
+                        if (objElse.getStatusInfo().equals(obj.getNotificationId()))
+                        {
+                            Date objTime = obj.getEventTime();
+                            Date objTimeElse = objElse.getEventTime();
+                            
+                            String probableCause = objElse.getProbableCause();
+                            if (flag == 0)
+                            {
+                                if ((objTimeElse.after(objTime)) || (objTimeElse.compareTo(objTime) == 0))
+                                {
+                                    obj.setOccurCount(objElse.getOccurCount());
+                                    DateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+                                    obj.setAssignRule(df.format(objTimeElse));
+                                    obj.setProbableCause(probableCause);
+                                    
+                                    flag = 1;
+                                }
+                            }
+                            else if ((!"".equals(objElseTemp)) && ((objTimeElse.after(objTime)) || (objTimeElse.compareTo(objTime) == 0)) && (
+                            (objTimeElse.after(objElseTemp.getEventTime())) || (objTimeElse.compareTo(objElseTemp.getEventTime()) == 0)))
+                            {
+                                obj.setOccurCount(objElse.getOccurCount());
+                                DateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+                                obj.setAssignRule(df.format(objTimeElse));
+                                obj.setProbableCause(probableCause);
+                            }
+                            objElseTemp = objElse;
+                        }
+                    }
+                    if ((tempElse.get(j) instanceof NotifyAckStateChangedAlarmEventImpl))
+                    {
+                        NotifyAckStateChangedAlarmEventImpl objElse = (NotifyAckStateChangedAlarmEventImpl)tempElse.get(j);
+                        if (objElse.getStatusInfo().equals(obj.getNotificationId()))
+                        {
+                            Date objTime = obj.getEventTime();
+                            Date objTimeElse = objElse.getEventTime();
+                            
+                            String probableCause = objElse.getProbableCause();
+                            if (flagAck == 0)
+                            {
+                                if ((objTimeElse.after(objTime)) || (objTimeElse.compareTo(objTime) == 0))
+                                {
+                                    obj.setOccurCount(objElse.getOccurCount());
+                                    DateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+                                    obj.setAssignRule(df.format(objTimeElse));
+                                    obj.setProbableCause(probableCause);
+                                    
+                                    flagAck = 1;
+                                }
+                            }
+                            else if ((!"".equals(objElseTempAck)) && ((objTimeElse.after(objTime)) || (objTimeElse.compareTo(objTime) == 0)) && (
+                            (objTimeElse.after(objElseTempAck.getEventTime())) || (objTimeElse.compareTo(objElseTempAck.getEventTime()) == 0)))
+                            {
+                                obj.setOccurCount(objElse.getOccurCount());
+                                DateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+                                obj.setAssignRule(df.format(objTimeElse));
+                                obj.setProbableCause(probableCause);
+                            }
+                            objElseTempAck = objElse;
+                        }
+                    }
+                    if ((tempElse.get(j) instanceof NotifyClearedAlarmEventImpl))
+                    {
+                        NotifyClearedAlarmEventImpl objElse = (NotifyClearedAlarmEventImpl)tempElse.get(j);
+                        if (objElse.getStatusInfo().equals(obj.getNotificationId()))
+                        {
+                            Date objTime = obj.getEventTime();
+                            Date objTimeElse = objElse.getEventTime();
+                            
+                            String probableCause = objElse.getProbableCause();
+                            if (flagClear == 0)
+                            {
+                                if ((objTimeElse.after(objTime)) || (objTimeElse.compareTo(objTime) == 0))
+                                {
+                                    obj.setOccurCount(objElse.getOccurCount());
+                                    DateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+                                    obj.setAssignRule(df.format(objTimeElse));
+                                    obj.setProbableCause(probableCause);
+                                    
+                                    flagClear = 1;
+                                }
+                            }
+                            else if ((!"".equals(objElseTempClear)) && ((objTimeElse.after(objTime)) || (objTimeElse.compareTo(objTime) == 0)) && (
+                            (objTimeElse.after(objElseTempClear.getEventTime())) || (objTimeElse.compareTo(objElseTempClear.getEventTime()) == 0)))
+                            {
+                                obj.setOccurCount(objElse.getOccurCount());
+                                DateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+                                obj.setAssignRule(df.format(objTimeElse));
+                                obj.setProbableCause(probableCause);
+                            }
+                            objElseTempClear = objElse;
+                        }
+                    }
+                }
+            }
+        }
+        alarmList = temp;
+        
+        String sql = "";
+        
+        sql = "SELECT ME_CLASS, CLASSNAME_CN FROM t_cm_me_class WHERE (ME_CLASS > 6 and ME_CLASS < 14) or ME_CLASS > 33";
+        HashMap<String, String> devTypeMap = this.alarmService.queryKeyValueMap(sql);
+        
+        sql = "SELECT classname_en, classname FROM T_CM_KEYVALUE WHERE cm_table = 'alarm_sub_class'";
+        HashMap<String, String> alarmSubClassMap = this.alarmService.queryKeyValueMap(sql);
+        HashMap<String, Object> resultMap = new HashMap();
+        resultMap.put("alarmList", alarmList);
+        resultMap.put("devTypeMap", devTypeMap);
+        resultMap.put("alarmSubClassMap", alarmSubClassMap);
+        HttpServletResponse response = ServletActionContext.getResponse();
+        response.setCharacterEncoding("UTF-8");
+        response.setHeader("Content-type", "text/html;charset=UTF-8");
+        PrintWriter out = null;
+        try
+        {
+            out = response.getWriter();
+        }
+        catch (IOException e)
+        {
+            e.printStackTrace();
+        }
+        Gson gson = new Gson();
+        String jsonObj = gson.toJson(resultMap);
+        out.print(jsonObj);
+    }
+    
+    public List monitorAll(int alarmStatus)
+    {
+        MonitorContext currentMc = new MonitorContext();
+        currentMc.getQueryTypeConfig().setDefaultType_val(this.totalAlarmCount);
+        currentMc.setMonitor_type(1);
+        currentMc.setDevType(this.devType);
+        currentMc.setSeverity(this.severity);
+        List alarmList = null;
+        try
+        {
+            alarmList = AlarmQueryClientSupport.getInstance().QueryAlarm(currentMc, alarmStatus);
+        }
+        catch (Exception e)
+        {
+            e.printStackTrace();
+            log.error(e.getMessage());
+        }
+        return alarmList;
+    }
+    
+    public List monitorFilter(String filterId, int alarmStatus)
+    {
+        MonitorContext currentMc = new MonitorContext();
+        currentMc.getQueryTypeConfig().setDefaultType_val(this.totalAlarmCount);
+        currentMc.setMonitor_type(10);
+        currentMc.setDevType(this.devType);
+        currentMc.setSeverity(this.severity);
+        currentMc.setFilterid(filterId);
+        List alarmList = null;
+        try
+        {
+            alarmList = AlarmQueryClientSupport.getInstance().QueryAlarm(currentMc, alarmStatus);
+        }
+        catch (Exception e)
+        {
+            e.printStackTrace();
+            log.error(e.getMessage());
+        }
+        return alarmList;
+    }
+    
+    public String gotoAlarmSearch()
+    {
+        alarmSearch();
+        HttpServletRequest request = ServletActionContext.getRequest();
+        Object object = request.getSession().getAttribute("_const_cas_assertion_");
+        Assertion assertion = (Assertion)object;
+        String userName = assertion.getPrincipal().getName();
+        List<SmRight> list = this.rightService.loadButtonRight(userName, 920303L);
+        for (int i = 0; i < list.size(); i++)
+        {
+            SmRight right = (SmRight)list.get(i);
+            if (right.getRightId().intValue() == 1) {
+                this.right_1 = right.getChecked().booleanValue();
+            }
+            if (right.getRightId().intValue() == 2) {
+                this.right_2 = right.getChecked().booleanValue();
+            }
+            if (right.getRightId().intValue() == 3) {
+                this.right_3 = right.getChecked().booleanValue();
+            }
+            if (right.getRightId().intValue() == 4) {
+                this.right_4 = right.getChecked().booleanValue();
+            }
+            if (right.getRightId().intValue() == 5) {
+                this.right_5 = right.getChecked().booleanValue();
+            }
+        }
+        KeyValue keyValue = new KeyValue();
+        this.devTypeList = keyValue.queryKeyValueList("dev_type");
+        return "success";
+    }
+    
+    public String gotoAlarmCount()
+    {
+        alarmSearch();
+        HttpServletRequest request = ServletActionContext.getRequest();
+        Object object = request.getSession().getAttribute("_const_cas_assertion_");
+        Assertion assertion = (Assertion)object;
+        String userName = assertion.getPrincipal().getName();
+        List<SmRight> list = this.rightService.loadButtonRight(userName, 920303L);
+        for (int i = 0; i < list.size(); i++)
+        {
+            SmRight right = (SmRight)list.get(i);
+            if (right.getRightId().intValue() == 1) {
+                this.right_1 = right.getChecked().booleanValue();
+            }
+            if (right.getRightId().intValue() == 2) {
+                this.right_2 = right.getChecked().booleanValue();
+            }
+            if (right.getRightId().intValue() == 3) {
+                this.right_3 = right.getChecked().booleanValue();
+            }
+            if (right.getRightId().intValue() == 4) {
+                this.right_4 = right.getChecked().booleanValue();
+            }
+            if (right.getRightId().intValue() == 5) {
+                this.right_5 = right.getChecked().booleanValue();
+            }
+        }
+        KeyValue keyValue = new KeyValue();
+        this.devTypeList = keyValue.queryKeyValueList("dev_type");
+        return "success";
+    }
+    
+    public String alarmCount()
+    {
+        HttpServletRequest request = ServletActionContext.getRequest();
+        Object object = request.getSession().getAttribute("_const_cas_assertion_");
+        Assertion assertion = (Assertion)object;
+        String userName = assertion.getPrincipal().getName();
+        List<SmRight> list = this.rightService.loadButtonRight(userName, 920303L);
+        for (int i = 0; i < list.size(); i++)
+        {
+            SmRight right = (SmRight)list.get(i);
+            if (right.getRightId().intValue() == 1) {
+                this.right_1 = right.getChecked().booleanValue();
+            }
+            if (right.getRightId().intValue() == 2) {
+                this.right_2 = right.getChecked().booleanValue();
+            }
+            if (right.getRightId().intValue() == 3) {
+                this.right_3 = right.getChecked().booleanValue();
+            }
+            if (right.getRightId().intValue() == 4) {
+                this.right_4 = right.getChecked().booleanValue();
+            }
+            if (right.getRightId().intValue() == 5) {
+                this.right_5 = right.getChecked().booleanValue();
+            }
+        }
+        StringBuffer conditions = new StringBuffer();
+        
+        String orderCondition = "";
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+        if ((this.beginTime == null) || ("".equals(this.beginTime.trim())))
+        {
+            Calendar c = Calendar.getInstance();
+            c.add(5, -1);
+            String mDateTime = sdf.format(c.getTime());
+            
+            this.beginTime = mDateTime.substring(0, 10);
+        }
+        if ((this.endTime == null) || ("".equals(this.endTime.trim())))
+        {
+            Calendar c = Calendar.getInstance();
+            c.add(5, -1);
+            String mDateTime = sdf.format(c.getTime());
+            
+            this.endTime = mDateTime.substring(0, 10);
+        }
+        if ((this.beginTime != null) && (!"".equals(this.beginTime.trim())))
+        {
+            this.beginTime = this.beginTime.substring(0, 10);
+            conditions.append(" and t.event_time >= '" + this.beginTime.trim() + "'");
+        }
+        if ((this.endTime != null) && (!"".equals(this.endTime.trim())))
+        {
+            this.endTime = this.endTime.substring(0, 10);
+            conditions.append(" and t.event_time <= '" + this.endTime.trim() + "'");
+        }
+        if ((this.additionInfo != null) && (!"".equals(this.additionInfo.trim()))) {
+            conditions.append(" and t.addition_info like '%" + this.additionInfo.trim() + "%'");
+        }
+        if ((this.objectName != null) && (!"".equals(this.objectName.trim()))) {
+            conditions.append(" and binary t.object_name like '%" + this.objectName.trim() + "%'");
+        }
+        if ((this.severity != null) && (!"".equals(this.severity))) {
+            conditions.append(" and t.severity in (" + this.severity.trim() + ")");
+        }
+        conditions.append("\tGROUP BY t.object_name,t.severity,t.alnum1 ");
+        if ((this.orderColumn != null) && (!"".equals(this.orderColumn))) {
+            orderCondition = " order by " + this.orderColumn + " " + this.orderType;
+        }
+        if ((this.orderColumn == null) || ("".equals(this.orderColumn))) {
+            orderCondition = " order by severity  ";
+        }
+        String countConditions = conditions.toString();
+        int rowCount = this.alarmService.getResultAlarmCount(countConditions);
+        
+        conditions.append(orderCondition);
+        
+        savePageNum();
+        int index = (this.iPageNum - 1) * this.PAGE_NUM;
+        if (index < 0) {
+            index = 0;
+        }
+        if ((index != 0) && (rowCount < index + 1))
+        {
+            this.iPageNum -= 1;
+            this.pageNum = this.iPageNum;
+            index = (this.iPageNum - 1) * this.PAGE_NUM;
+        }
+        String h3Val = "";
+        String nameVal = "";
+        String newName = "";
+        String deviceNAME2 = "";
+        if ((this.ex_type != null) && (!"".equals(this.ex_type)))
+        {
+            try
+            {
+                this.alarmCountList = this.alarmService.queryAlarmCountList(conditions.toString(), 0, rowCount);
+                
+                exportCount(this.alarmCountList);
+            }
+            catch (Exception e)
+            {
+                e.printStackTrace();
+                log.error("������������������������������������������");
+            }
+            return null;
+        }
+        this.alarmCountList = this.alarmService.queryAlarmCountList(conditions.toString(), index, this.PAGE_NUM);
+        
+        KeyValue keyValue = new KeyValue();
+        this.devTypeList = keyValue.queryKeyValueList("dev_type");
+        
+        this.pageSpliter = new PageSpliterBean(this.iPageNum, this.PAGE_NUM, rowCount, this.alarmCountList);
+        this.beginTime = this.beginTime.substring(0, 10);
+        this.endTime = this.endTime.substring(0, 10);
+        
+        this.pageHtml = this.pageSpliter.getPageSpliterHtml();
+        return "success";
+    }
+    
+    public String alarmSearch()
+    {
+        HttpServletRequest request = ServletActionContext.getRequest();
+        Object object = request.getSession().getAttribute("_const_cas_assertion_");
+        Assertion assertion = (Assertion)object;
+        String userName = assertion.getPrincipal().getName();
+        List<SmRight> list = this.rightService.loadButtonRight(userName, 920303L);
+        for (int i = 0; i < list.size(); i++)
+        {
+            SmRight right = (SmRight)list.get(i);
+            if (right.getRightId().intValue() == 1) {
+                this.right_1 = right.getChecked().booleanValue();
+            }
+            if (right.getRightId().intValue() == 2) {
+                this.right_2 = right.getChecked().booleanValue();
+            }
+            if (right.getRightId().intValue() == 3) {
+                this.right_3 = right.getChecked().booleanValue();
+            }
+            if (right.getRightId().intValue() == 4) {
+                this.right_4 = right.getChecked().booleanValue();
+            }
+            if (right.getRightId().intValue() == 5) {
+                this.right_5 = right.getChecked().booleanValue();
+            }
+        }
+        StringBuffer conditions = new StringBuffer();
+        
+        String orderCondition = "";
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+        if ((this.beginTime == null) || ("".equals(this.beginTime.trim())))
+        {
+            Calendar c = Calendar.getInstance();
+            c.add(5, -2);
+            String mDateTime = sdf.format(c.getTime());
+            
+            this.beginTime = mDateTime.substring(0, 10);
+        }
+        if ((this.endTime == null) || ("".equals(this.endTime.trim())))
+        {
+            this.endTime = sdf.format(new Date());
+            this.endTime = this.endTime.substring(0, 10);
+        }
+        if ((this.beginTime != null) && (!"".equals(this.beginTime.trim()))) {
+            conditions.append(" and t.event_time >= '" + this.beginTime.trim() + "'");
+        }
+        if ((this.endTime != null) && (!"".equals(this.endTime.trim()))) {
+            conditions.append(" and t.event_time <= '" + this.endTime.trim() + "'");
+        }
+        if ((this.count_min != null) && (!"".equals(this.count_min.trim()))) {
+            conditions.append(" and t.occur_count >= " + this.count_min.trim());
+        }
+        if ((this.count_max != null) && (!"".equals(this.count_max.trim()))) {
+            conditions.append(" and t.occur_count <= " + this.count_max.trim());
+        }
+        if ((this.additionInfo != null) && (!"".equals(this.additionInfo.trim()))) {
+            conditions.append(" and t.addition_info like '%" + this.additionInfo.trim() + "%'");
+        }
+        if ((this.probableCause != null) && (!"".equals(this.probableCause.trim()))) {
+            conditions.append(" and binary t.probable_cause like '%" + this.probableCause.trim() + "%'");
+        }
+        if ((this.objectName != null) && (!"".equals(this.objectName.trim()))) {
+            conditions.append(" and binary t.object_name like '%" + this.objectName.trim() + "%'");
+        }
+        if ((this.devType != null) && (!"".equals(this.devType))) {
+            conditions.append(" and t.dev_type = " + this.devType.trim());
+        }
+        if ((this.severity != null) && (!"".equals(this.severity))) {
+            conditions.append(" and t.severity in (" + this.severity.trim() + ")");
+        }
+        if ((this.notificationId != null) && (!"".equals(this.notificationId))) {
+            conditions.append(" and t.notification_id like '%" + this.notificationId.trim() + "%'");
+        }
+        if ((StringUtils.isNotEmpty(this.assignStatus)) && (!"-1".equals(this.assignStatus))) {
+            conditions.append(" and t.assign_status = " + this.assignStatus.trim());
+        }
+        if ((StringUtils.isNotEmpty(this.clearStatus)) && (!"-1".equals(this.clearStatus))) {
+            if ("1".equals(this.clearStatus)) {
+                conditions.append(" and t.clear_time is not null ");
+            } else {
+                conditions.append(" and t.clear_time is  null ");
+            }
+        }
+        if ((this.orderColumn != null) && (!"".equals(this.orderColumn))) {
+            orderCondition = " order by " + this.orderColumn + " " + this.orderType;
+        }
+        if ((this.orderColumn == null) || ("".equals(this.orderColumn))) {
+            orderCondition = " order by event_time DESC ";
+        }
+        conditions.append(orderCondition);
+        
+        savePageNum();
+        int index = (this.iPageNum - 1) * this.PAGE_NUM;
+        if (index < 0) {
+            index = 0;
+        }
+        String countConditions = conditions.toString();
+        int rowCount = this.alarmService.getResultCount1(countConditions);
+        if ((index != 0) && (rowCount < index + 1))
+        {
+            this.iPageNum -= 1;
+            this.pageNum = this.iPageNum;
+            index = (this.iPageNum - 1) * this.PAGE_NUM;
+        }
+        if ((this.ex_type != null) && (!"".equals(this.ex_type)))
+        {
+            try
+            {
+                this.clearAlarmList = this.alarmService.queryAlarmList(conditions.toString(), 0, rowCount);
+                export(this.clearAlarmList);
+            }
+            catch (Exception e)
+            {
+                e.printStackTrace();
+                log.error("������������������������������������������");
+            }
+            return null;
+        }
+        this.clearAlarmList = this.alarmService.queryAlarmList(conditions.toString(), index, this.PAGE_NUM);
+        
+        KeyValue keyValue = new KeyValue();
+        this.devTypeList = keyValue.queryKeyValueList("dev_type");
+        
+        this.pageSpliter = new PageSpliterBean(this.iPageNum, this.PAGE_NUM, rowCount, this.clearAlarmList);
+        this.pageHtml = this.pageSpliter.getPageSpliterHtml();
+        return "success";
+    }
+    
+    public String gotoAckAlarmNew()
+    {
+        String userId = getUserid();
+        this.createUserName = getUserName(userId);
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+        this.createDate = sdf.format(new Date());
+        return "success";
+    }
+    
+    public String gotoAckAlarm()
+    {
+        String userId = getUserid();
+        this.createUserName = getUserName(userId);
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+        this.createDate = sdf.format(new Date());
+        return "success";
+    }
+    
+    /* Error */
+    public void ackAlarms()
+    {
+        // Byte code:
+        //   0: new 630    java/util/Date
+        //   3: dup
+        //   4: invokespecial 848    java/util/Date:<init>    ()V
+        //   7: astore_1
+        //   8: ldc_w 908
+        //   11: astore_2
+        //   12: ldc -88
+        //   14: astore_3
+        //   15: aload_0
+        //   16: invokevirtual 385    com/newland/idc/action/alarmManage/AlarmManageAction:getUserid    ()Ljava/lang/String;
+        //   19: astore 4
+        //   21: aload_0
+        //   22: aload 4
+        //   24: invokevirtual 899    com/newland/idc/action/alarmManage/AlarmManageAction:getUserName    (Ljava/lang/String;)Ljava/lang/String;
+        //   27: astore 5
+        //   29: aload_0
+        //   30: getfield 158    com/newland/idc/action/alarmManage/AlarmManageAction:notificationIds    Ljava/lang/String;
+        //   33: ldc -96
+        //   35: invokevirtual 162    java/lang/String:split    (Ljava/lang/String;)[Ljava/lang/String;
+        //   38: astore 6
+        //   40: aload 6
+        //   42: arraylength
+        //   43: anewarray 910    com/newland/alarm/management/base/impl/InteractionRecordImpl
+        //   46: astore 7
+        //   48: new 579    java/util/ArrayList
+        //   51: dup
+        //   52: invokespecial 581    java/util/ArrayList:<init>    ()V
+        //   55: astore 8
+        //   57: new 579    java/util/ArrayList
+        //   60: dup
+        //   61: invokespecial 581    java/util/ArrayList:<init>    ()V
+        //   64: astore 9
+        //   66: iconst_0
+        //   67: istore 10
+        //   69: iconst_0
+        //   70: istore 11
+        //   72: iconst_0
+        //   73: istore 12
+        //   75: goto +264 -> 339
+        //   78: aload 6
+        //   80: iload 12
+        //   82: aaload
+        //   83: ldc -86
+        //   85: invokevirtual 162    java/lang/String:split    (Ljava/lang/String;)[Ljava/lang/String;
+        //   88: astore 13
+        //   90: aload 13
+        //   92: iconst_0
+        //   93: aaload
+        //   94: astore 14
+        //   96: aload 13
+        //   98: iconst_1
+        //   99: aaload
+        //   100: astore 15
+        //   102: aload 13
+        //   104: iconst_2
+        //   105: aaload
+        //   106: astore 16
+        //   108: aload 13
+        //   110: iconst_3
+        //   111: aaload
+        //   112: astore 17
+        //   114: aload 13
+        //   116: iconst_4
+        //   117: aaload
+        //   118: astore 18
+        //   120: aload 7
+        //   122: iload 12
+        //   124: new 910    com/newland/alarm/management/base/impl/InteractionRecordImpl
+        //   127: dup
+        //   128: invokespecial 912    com/newland/alarm/management/base/impl/InteractionRecordImpl:<init>    ()V
+        //   131: aastore
+        //   132: aload 7
+        //   134: iload 12
+        //   136: aaload
+        //   137: aload 14
+        //   139: invokevirtual 913    com/newland/alarm/management/base/impl/InteractionRecordImpl:setNotificationId    (Ljava/lang/String;)V
+        //   142: aload 7
+        //   144: iload 12
+        //   146: aaload
+        //   147: aload 15
+        //   149: invokevirtual 916    com/newland/alarm/management/base/impl/InteractionRecordImpl:setApplicationDN    (Ljava/lang/String;)V
+        //   152: aload 7
+        //   154: iload 12
+        //   156: aaload
+        //   157: aload 4
+        //   159: invokevirtual 919    com/newland/alarm/management/base/impl/InteractionRecordImpl:setUserId    (Ljava/lang/String;)V
+        //   162: aload 7
+        //   164: iload 12
+        //   166: aaload
+        //   167: new 630    java/util/Date
+        //   170: dup
+        //   171: invokespecial 848    java/util/Date:<init>    ()V
+        //   174: invokevirtual 922    com/newland/alarm/management/base/impl/InteractionRecordImpl:setTime    (Ljava/util/Date;)V
+        //   177: aload 7
+        //   179: iload 12
+        //   181: aaload
+        //   182: aload_0
+        //   183: getfield 925    com/newland/idc/action/alarmManage/AlarmManageAction:reason    Ljava/lang/String;
+        //   186: invokevirtual 927    com/newland/alarm/management/base/impl/InteractionRecordImpl:setReserved1    (Ljava/lang/String;)V
+        //   189: ldc_w 930
+        //   192: aload 15
+        //   194: invokevirtual 419    java/lang/String:equals    (Ljava/lang/Object;)Z
+        //   197: ifeq +122 -> 319
+        //   200: new 932    com/newland/dcimalarm/AlarmUtil
+        //   203: dup
+        //   204: invokespecial 934    com/newland/dcimalarm/AlarmUtil:<init>    ()V
+        //   207: astore 19
+        //   209: aload 19
+        //   211: aload 16
+        //   213: invokestatic 174    java/lang/String:valueOf    (Ljava/lang/Object;)Ljava/lang/String;
+        //   216: aload 17
+        //   218: invokestatic 174    java/lang/String:valueOf    (Ljava/lang/Object;)Ljava/lang/String;
+        //   221: aload 18
+        //   223: invokestatic 174    java/lang/String:valueOf    (Ljava/lang/Object;)Ljava/lang/String;
+        //   226: aload 5
+        //   228: invokevirtual 935    com/newland/dcimalarm/AlarmUtil:newAckAlarm    (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;
+        //   231: astore 20
+        //   233: ldc_w 939
+        //   236: aload 20
+        //   238: invokevirtual 419    java/lang/String:equals    (Ljava/lang/Object;)Z
+        //   241: ifeq +20 -> 261
+        //   244: aload 8
+        //   246: iload 10
+        //   248: aload 7
+        //   250: iload 12
+        //   252: aaload
+        //   253: invokeinterface 941 3 0
+        //   258: iinc 10 1
+        //   261: ldc_w 939
+        //   264: aload 20
+        //   266: invokevirtual 419    java/lang/String:equals    (Ljava/lang/Object;)Z
+        //   269: ifne +67 -> 336
+        //   272: aload 9
+        //   274: iload 11
+        //   276: aload 7
+        //   278: iload 12
+        //   280: aaload
+        //   281: invokeinterface 941 3 0
+        //   286: iinc 11 1
+        //   289: goto +47 -> 336
+        //   292: astore 19
+        //   294: aload 19
+        //   296: invokevirtual 219    java/lang/Exception:printStackTrace    ()V
+        //   299: aload 9
+        //   301: iload 11
+        //   303: aload 7
+        //   305: iload 12
+        //   307: aaload
+        //   308: invokeinterface 941 3 0
+        //   313: iinc 11 1
+        //   316: goto +20 -> 336
+        //   319: aload 8
+        //   321: iload 10
+        //   323: aload 7
+        //   325: iload 12
+        //   327: aaload
+        //   328: invokeinterface 941 3 0
+        //   333: iinc 10 1
+        //   336: iinc 12 1
+        //   339: iload 12
+        //   341: aload 6
+        //   343: arraylength
+        //   344: if_icmplt -266 -> 78
+        //   347: iload 11
+        //   349: ifle +148 -> 497
+        //   352: iconst_0
+        //   353: istore 12
+        //   355: goto +57 -> 412
+        //   358: new 172    java/lang/StringBuilder
+        //   361: dup
+        //   362: aload_3
+        //   363: invokestatic 174    java/lang/String:valueOf    (Ljava/lang/Object;)Ljava/lang/String;
+        //   366: invokespecial 178    java/lang/StringBuilder:<init>    (Ljava/lang/String;)V
+        //   369: ldc_w 944
+        //   372: invokevirtual 180    java/lang/StringBuilder:append    (Ljava/lang/String;)Ljava/lang/StringBuilder;
+        //   375: aload 9
+        //   377: iload 12
+        //   379: invokeinterface 288 2 0
+        //   384: checkcast 910    com/newland/alarm/management/base/impl/InteractionRecordImpl
+        //   387: invokevirtual 946    com/newland/alarm/management/base/impl/InteractionRecordImpl:getNotificationId    ()Ljava/lang/String;
+        //   390: invokevirtual 180    java/lang/StringBuilder:append    (Ljava/lang/String;)Ljava/lang/StringBuilder;
+        //   393: ldc_w 947
+        //   396: invokevirtual 180    java/lang/StringBuilder:append    (Ljava/lang/String;)Ljava/lang/StringBuilder;
+        //   399: ldc_w 949
+        //   402: invokevirtual 180    java/lang/StringBuilder:append    (Ljava/lang/String;)Ljava/lang/StringBuilder;
+        //   405: invokevirtual 184    java/lang/StringBuilder:toString    ()Ljava/lang/String;
+        //   408: astore_3
+        //   409: iinc 12 1
+        //   412: iload 12
+        //   414: iload 11
+        //   416: if_icmplt -58 -> 358
+        //   419: iconst_0
+        //   420: istore 12
+        //   422: goto +57 -> 479
+        //   425: new 172    java/lang/StringBuilder
+        //   428: dup
+        //   429: aload_3
+        //   430: invokestatic 174    java/lang/String:valueOf    (Ljava/lang/Object;)Ljava/lang/String;
+        //   433: invokespecial 178    java/lang/StringBuilder:<init>    (Ljava/lang/String;)V
+        //   436: ldc_w 944
+        //   439: invokevirtual 180    java/lang/StringBuilder:append    (Ljava/lang/String;)Ljava/lang/StringBuilder;
+        //   442: aload 8
+        //   444: iload 12
+        //   446: invokeinterface 288 2 0
+        //   451: checkcast 910    com/newland/alarm/management/base/impl/InteractionRecordImpl
+        //   454: invokevirtual 946    com/newland/alarm/management/base/impl/InteractionRecordImpl:getNotificationId    ()Ljava/lang/String;
+        //   457: invokevirtual 180    java/lang/StringBuilder:append    (Ljava/lang/String;)Ljava/lang/StringBuilder;
+        //   460: ldc_w 908
+        //   463: invokevirtual 180    java/lang/StringBuilder:append    (Ljava/lang/String;)Ljava/lang/StringBuilder;
+        //   466: ldc_w 949
+        //   469: invokevirtual 180    java/lang/StringBuilder:append    (Ljava/lang/String;)Ljava/lang/StringBuilder;
+        //   472: invokevirtual 184    java/lang/StringBuilder:toString    ()Ljava/lang/String;
+        //   475: astore_3
+        //   476: iinc 10 1
+        //   479: iload 12
+        //   481: iload 10
+        //   483: if_icmplt -58 -> 425
+        //   486: getstatic 110    com/newland/idc/action/alarmManage/AlarmManageAction:log    Lorg/apache/log4j/Logger;
+        //   489: aload_3
+        //   490: invokevirtual 951    org/apache/log4j/Logger:warn    (Ljava/lang/Object;)V
+        //   493: ldc_w 954
+        //   496: astore_2
+        //   497: getstatic 110    com/newland/idc/action/alarmManage/AlarmManageAction:log    Lorg/apache/log4j/Logger;
+        //   500: new 172    java/lang/StringBuilder
+        //   503: dup
+        //   504: ldc_w 956
+        //   507: invokespecial 178    java/lang/StringBuilder:<init>    (Ljava/lang/String;)V
+        //   510: aload 8
+        //   512: invokeinterface 296 1 0
+        //   517: invokevirtual 958    java/lang/StringBuilder:append    (I)Ljava/lang/StringBuilder;
+        //   520: invokevirtual 184    java/lang/StringBuilder:toString    ()Ljava/lang/String;
+        //   523: invokevirtual 961    org/apache/log4j/Logger:info    (Ljava/lang/Object;)V
+        //   526: aload 8
+        //   528: invokeinterface 296 1 0
+        //   533: ifeq +343 -> 876
+        //   536: new 579    java/util/ArrayList
+        //   539: dup
+        //   540: invokespecial 581    java/util/ArrayList:<init>    ()V
+        //   543: astore 12
+        //   545: iconst_0
+        //   546: istore 13
+        //   548: aload 12
+        //   550: invokeinterface 964 1 0
+        //   555: pop
+        //   556: iconst_0
+        //   557: istore 14
+        //   559: goto +214 -> 773
+        //   562: aload 8
+        //   564: iload 14
+        //   566: invokeinterface 288 2 0
+        //   571: checkcast 910    com/newland/alarm/management/base/impl/InteractionRecordImpl
+        //   574: invokevirtual 946    com/newland/alarm/management/base/impl/InteractionRecordImpl:getNotificationId    ()Ljava/lang/String;
+        //   577: astore 15
+        //   579: aload_0
+        //   580: aload_0
+        //   581: getfield 188    com/newland/idc/action/alarmManage/AlarmManageAction:alarmService    Lcom/newland/idc/service/AlarmService;
+        //   584: aload 15
+        //   586: invokeinterface 968 2 0
+        //   591: putfield 971    com/newland/idc/action/alarmManage/AlarmManageAction:noCpsClearAlarmList    Ljava/util/List;
+        //   594: iconst_0
+        //   595: istore 16
+        //   597: goto +159 -> 756
+        //   600: aload 12
+        //   602: iload 13
+        //   604: new 910    com/newland/alarm/management/base/impl/InteractionRecordImpl
+        //   607: dup
+        //   608: invokespecial 912    com/newland/alarm/management/base/impl/InteractionRecordImpl:<init>    ()V
+        //   611: invokeinterface 941 3 0
+        //   616: aload 12
+        //   618: iload 13
+        //   620: invokeinterface 288 2 0
+        //   625: checkcast 910    com/newland/alarm/management/base/impl/InteractionRecordImpl
+        //   628: aload_0
+        //   629: getfield 971    com/newland/idc/action/alarmManage/AlarmManageAction:noCpsClearAlarmList    Ljava/util/List;
+        //   632: iload 16
+        //   634: invokeinterface 288 2 0
+        //   639: checkcast 294    java/util/HashMap
+        //   642: ldc_w 454
+        //   645: invokevirtual 304    java/util/HashMap:get    (Ljava/lang/Object;)Ljava/lang/Object;
+        //   648: checkcast 163    java/lang/String
+        //   651: invokevirtual 913    com/newland/alarm/management/base/impl/InteractionRecordImpl:setNotificationId    (Ljava/lang/String;)V
+        //   654: aload 12
+        //   656: iload 13
+        //   658: invokeinterface 288 2 0
+        //   663: checkcast 910    com/newland/alarm/management/base/impl/InteractionRecordImpl
+        //   666: aload_0
+        //   667: getfield 971    com/newland/idc/action/alarmManage/AlarmManageAction:noCpsClearAlarmList    Ljava/util/List;
+        //   670: iload 16
+        //   672: invokeinterface 288 2 0
+        //   677: checkcast 294    java/util/HashMap
+        //   680: ldc_w 973
+        //   683: invokevirtual 304    java/util/HashMap:get    (Ljava/lang/Object;)Ljava/lang/Object;
+        //   686: checkcast 163    java/lang/String
+        //   689: invokevirtual 916    com/newland/alarm/management/base/impl/InteractionRecordImpl:setApplicationDN    (Ljava/lang/String;)V
+        //   692: aload 12
+        //   694: iload 13
+        //   696: invokeinterface 288 2 0
+        //   701: checkcast 910    com/newland/alarm/management/base/impl/InteractionRecordImpl
+        //   704: aload 4
+        //   706: invokevirtual 919    com/newland/alarm/management/base/impl/InteractionRecordImpl:setUserId    (Ljava/lang/String;)V
+        //   709: aload 12
+        //   711: iload 13
+        //   713: invokeinterface 288 2 0
+        //   718: checkcast 910    com/newland/alarm/management/base/impl/InteractionRecordImpl
+        //   721: new 630    java/util/Date
+        //   724: dup
+        //   725: invokespecial 848    java/util/Date:<init>    ()V
+        //   728: invokevirtual 922    com/newland/alarm/management/base/impl/InteractionRecordImpl:setTime    (Ljava/util/Date;)V
+        //   731: aload 12
+        //   733: iload 13
+        //   735: invokeinterface 288 2 0
+        //   740: checkcast 910    com/newland/alarm/management/base/impl/InteractionRecordImpl
+        //   743: aload_0
+        //   744: getfield 925    com/newland/idc/action/alarmManage/AlarmManageAction:reason    Ljava/lang/String;
+        //   747: invokevirtual 927    com/newland/alarm/management/base/impl/InteractionRecordImpl:setReserved1    (Ljava/lang/String;)V
+        //   750: iinc 13 1
+        //   753: iinc 16 1
+        //   756: iload 16
+        //   758: aload_0
+        //   759: getfield 971    com/newland/idc/action/alarmManage/AlarmManageAction:noCpsClearAlarmList    Ljava/util/List;
+        //   762: invokeinterface 296 1 0
+        //   767: if_icmplt -167 -> 600
+        //   770: iinc 14 1
+        //   773: iload 14
+        //   775: aload 8
+        //   777: invokeinterface 296 1 0
+        //   782: if_icmplt -220 -> 562
+        //   785: iload 13
+        //   787: anewarray 910    com/newland/alarm/management/base/impl/InteractionRecordImpl
+        //   790: astore 14
+        //   792: iconst_0
+        //   793: istore 15
+        //   795: goto +23 -> 818
+        //   798: aload 14
+        //   800: iload 15
+        //   802: aload 12
+        //   804: iload 15
+        //   806: invokeinterface 288 2 0
+        //   811: checkcast 910    com/newland/alarm/management/base/impl/InteractionRecordImpl
+        //   814: aastore
+        //   815: iinc 15 1
+        //   818: iload 15
+        //   820: iload 13
+        //   822: if_icmplt -24 -> 798
+        //   825: new 630    java/util/Date
+        //   828: dup
+        //   829: invokespecial 848    java/util/Date:<init>    ()V
+        //   832: astore 15
+        //   834: aload 15
+        //   836: aload_1
+        //   837: iconst_3
+        //   838: invokestatic 975    com/newland/commons/dateutil/DateUtil:diffDate    (Ljava/util/Date;Ljava/util/Date;I)J
+        //   841: lstore 16
+        //   843: getstatic 981    java/lang/System:out    Ljava/io/PrintStream;
+        //   846: new 172    java/lang/StringBuilder
+        //   849: dup
+        //   850: ldc_w 986
+        //   853: invokespecial 178    java/lang/StringBuilder:<init>    (Ljava/lang/String;)V
+        //   856: lload 16
+        //   858: invokevirtual 988    java/lang/StringBuilder:append    (J)Ljava/lang/StringBuilder;
+        //   861: invokevirtual 184    java/lang/StringBuilder:toString    ()Ljava/lang/String;
+        //   864: invokevirtual 991    java/io/PrintStream:println    (Ljava/lang/String;)V
+        //   867: invokestatic 996    com/newland/idc/action/alarmManage/UserInteractorClientSupport:getInstance    ()Lcom/newland/idc/action/alarmManage/UserInteractorClientSupport;
+        //   870: aload 14
+        //   872: invokevirtual 1001    com/newland/idc/action/alarmManage/UserInteractorClientSupport:AcknowlegedAlarms    ([Lcom/newland/alarm/management/base/impl/InteractionRecordImpl;)Ljava/util/List;
+        //   875: pop
+        //   876: new 630    java/util/Date
+        //   879: dup
+        //   880: invokespecial 848    java/util/Date:<init>    ()V
+        //   883: astore 12
+        //   885: aload 12
+        //   887: aload_1
+        //   888: iconst_3
+        //   889: invokestatic 975    com/newland/commons/dateutil/DateUtil:diffDate    (Ljava/util/Date;Ljava/util/Date;I)J
+        //   892: lstore 13
+        //   894: getstatic 981    java/lang/System:out    Ljava/io/PrintStream;
+        //   897: new 172    java/lang/StringBuilder
+        //   900: dup
+        //   901: ldc_w 986
+        //   904: invokespecial 178    java/lang/StringBuilder:<init>    (Ljava/lang/String;)V
+        //   907: lload 13
+        //   909: invokevirtual 988    java/lang/StringBuilder:append    (J)Ljava/lang/StringBuilder;
+        //   912: invokevirtual 184    java/lang/StringBuilder:toString    ()Ljava/lang/String;
+        //   915: invokevirtual 991    java/io/PrintStream:println    (Ljava/lang/String;)V
+        //   918: goto +32 -> 950
+        //   921: astore 4
+        //   923: aload 4
+        //   925: invokevirtual 219    java/lang/Exception:printStackTrace    ()V
+        //   928: ldc_w 947
+        //   931: astore_2
+        //   932: aload_0
+        //   933: aload_2
+        //   934: invokevirtual 1005    com/newland/idc/action/alarmManage/AlarmManageAction:ajaxBack    (Ljava/lang/Object;)V
+        //   937: goto +18 -> 955
+        //   940: astore 21
+        //   942: aload_0
+        //   943: aload_2
+        //   944: invokevirtual 1005    com/newland/idc/action/alarmManage/AlarmManageAction:ajaxBack    (Ljava/lang/Object;)V
+        //   947: aload 21
+        //   949: athrow
+        //   950: aload_0
+        //   951: aload_2
+        //   952: invokevirtual 1005    com/newland/idc/action/alarmManage/AlarmManageAction:ajaxBack    (Ljava/lang/Object;)V
+        //   955: return
+        // Line number table:
+        //   Java source line #1392    -> byte code offset #0
+        //   Java source line #1393    -> byte code offset #8
+        //   Java source line #1394    -> byte code offset #12
+        //   Java source line #1396    -> byte code offset #15
+        //   Java source line #1397    -> byte code offset #21
+        //   Java source line #1398    -> byte code offset #29
+        //   Java source line #1399    -> byte code offset #40
+        //   Java source line #1400    -> byte code offset #48
+        //   Java source line #1401    -> byte code offset #57
+        //   Java source line #1404    -> byte code offset #66
+        //   Java source line #1405    -> byte code offset #69
+        //   Java source line #1406    -> byte code offset #72
+        //   Java source line #1407    -> byte code offset #78
+        //   Java source line #1408    -> byte code offset #90
+        //   Java source line #1409    -> byte code offset #96
+        //   Java source line #1410    -> byte code offset #102
+        //   Java source line #1411    -> byte code offset #108
+        //   Java source line #1412    -> byte code offset #114
+        //   Java source line #1413    -> byte code offset #120
+        //   Java source line #1414    -> byte code offset #132
+        //   Java source line #1415    -> byte code offset #142
+        //   Java source line #1416    -> byte code offset #152
+        //   Java source line #1417    -> byte code offset #162
+        //   Java source line #1418    -> byte code offset #177
+        //   Java source line #1421    -> byte code offset #189
+        //   Java source line #1423    -> byte code offset #200
+        //   Java source line #1424    -> byte code offset #209
+        //   Java source line #1425    -> byte code offset #216
+        //   Java source line #1424    -> byte code offset #228
+        //   Java source line #1426    -> byte code offset #233
+        //   Java source line #1427    -> byte code offset #244
+        //   Java source line #1428    -> byte code offset #258
+        //   Java source line #1430    -> byte code offset #261
+        //   Java source line #1431    -> byte code offset #272
+        //   Java source line #1432    -> byte code offset #286
+        //   Java source line #1434    -> byte code offset #289
+        //   Java source line #1435    -> byte code offset #294
+        //   Java source line #1436    -> byte code offset #299
+        //   Java source line #1437    -> byte code offset #313
+        //   Java source line #1439    -> byte code offset #316
+        //   Java source line #1440    -> byte code offset #319
+        //   Java source line #1441    -> byte code offset #333
+        //   Java source line #1406    -> byte code offset #336
+        //   Java source line #1444    -> byte code offset #347
+        //   Java source line #1445    -> byte code offset #352
+        //   Java source line #1446    -> byte code offset #358
+        //   Java source line #1445    -> byte code offset #409
+        //   Java source line #1448    -> byte code offset #419
+        //   Java source line #1449    -> byte code offset #425
+        //   Java source line #1448    -> byte code offset #476
+        //   Java source line #1451    -> byte code offset #486
+        //   Java source line #1452    -> byte code offset #493
+        //   Java source line #1454    -> byte code offset #497
+        //   Java source line #1455    -> byte code offset #526
+        //   Java source line #1456    -> byte code offset #536
+        //   Java source line #1457    -> byte code offset #545
+        //   Java source line #1458    -> byte code offset #548
+        //   Java source line #1459    -> byte code offset #556
+        //   Java source line #1460    -> byte code offset #562
+        //   Java source line #1461    -> byte code offset #579
+        //   Java source line #1462    -> byte code offset #594
+        //   Java source line #1463    -> byte code offset #600
+        //   Java source line #1464    -> byte code offset #616
+        //   Java source line #1465    -> byte code offset #654
+        //   Java source line #1466    -> byte code offset #692
+        //   Java source line #1467    -> byte code offset #709
+        //   Java source line #1468    -> byte code offset #731
+        //   Java source line #1469    -> byte code offset #750
+        //   Java source line #1462    -> byte code offset #753
+        //   Java source line #1459    -> byte code offset #770
+        //   Java source line #1472    -> byte code offset #785
+        //   Java source line #1473    -> byte code offset #792
+        //   Java source line #1474    -> byte code offset #798
+        //   Java source line #1473    -> byte code offset #815
+        //   Java source line #1476    -> byte code offset #825
+        //   Java source line #1477    -> byte code offset #834
+        //   Java source line #1478    -> byte code offset #843
+        //   Java source line #1479    -> byte code offset #867
+        //   Java source line #1481    -> byte code offset #876
+        //   Java source line #1482    -> byte code offset #885
+        //   Java source line #1483    -> byte code offset #894
+        //   Java source line #1484    -> byte code offset #918
+        //   Java source line #1485    -> byte code offset #923
+        //   Java source line #1486    -> byte code offset #928
+        //   Java source line #1488    -> byte code offset #932
+        //   Java source line #1487    -> byte code offset #940
+        //   Java source line #1488    -> byte code offset #942
+        //   Java source line #1489    -> byte code offset #947
+        //   Java source line #1488    -> byte code offset #950
+        //   Java source line #1490    -> byte code offset #955
+        // Local variable table:
+        //   start    length    slot    name    signature
+        //   0    956    0    this    AlarmManageAction
+        //   7    881    1    date1    Date
+        //   11    941    2    result    String
+        //   14    476    3    resultStr    String
+        //   19    686    4    userId    String
+        //   921    3    4    e    Exception
+        //   27    200    5    ackUser    String
+        //   38    304    6    recordArray    String[]
+        //   46    278    7    records    InteractionRecordImpl[]
+        //   55    721    8    sucrecords    List<InteractionRecordImpl>
+        //   64    312    9    failrecords    List<InteractionRecordImpl>
+        //   67    415    10    j    int
+        //   70    345    11    k    int
+        //   73    267    12    i    int
+        //   353    60    12    h    int
+        //   420    60    12    g    int
+        //   543    260    12    finalrecords    List<InteractionRecordImpl>
+        //   883    3    12    date2    Date
+        //   88    27    13    recordInfo    String[]
+        //   546    275    13    l    int
+        //   892    16    13    diffTime2    long
+        //   94    44    14    notificationId    String
+        //   557    217    14    m    int
+        //   790    81    14    finalrecords1    InteractionRecordImpl[]
+        //   100    93    15    applicationDN    String
+        //   577    8    15    statuInfo    String
+        //   793    26    15    p    int
+        //   832    3    15    date3    Date
+        //   106    106    16    sysIntId    String
+        //   595    162    16    n    int
+        //   841    16    16    diffTime2    long
+        //   112    105    17    alnum1    String
+        //   118    104    18    visual    String
+        //   207    3    19    util    com.newland.dcimalarm.AlarmUtil
+        //   292    3    19    e    Exception
+        //   231    34    20    resultStatus    String
+        //   940    8    21    localObject    Object
+        // Exception table:
+        //   from    to    target    type
+        //   200    289    292    java/lang/Exception
+        //   15    918    921    java/lang/Exception
+        //   15    932    940    finally
+    }
+    
+    public String gotoClearAlarm()
+    {
+        String userId = getUserid();
+        this.createUserName = getUserName(userId);
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+        this.createDate = sdf.format(new Date());
+        return "success";
+    }
+    
+    /* Error */
+    public void clearAlarms()
+    {
+        // Byte code:
+        //   0: new 630    java/util/Date
+        //   3: dup
+        //   4: invokespecial 848    java/util/Date:<init>    ()V
+        //   7: astore_1
+        //   8: ldc_w 1043
+        //   11: astore_2
+        //   12: ldc -88
+        //   14: astore_3
+        //   15: aload_0
+        //   16: invokevirtual 385    com/newland/idc/action/alarmManage/AlarmManageAction:getUserid    ()Ljava/lang/String;
+        //   19: astore 4
+        //   21: aload_0
+        //   22: aload 4
+        //   24: invokevirtual 899    com/newland/idc/action/alarmManage/AlarmManageAction:getUserName    (Ljava/lang/String;)Ljava/lang/String;
+        //   27: astore 5
+        //   29: aload_0
+        //   30: getfield 158    com/newland/idc/action/alarmManage/AlarmManageAction:notificationIds    Ljava/lang/String;
+        //   33: ldc -96
+        //   35: invokevirtual 162    java/lang/String:split    (Ljava/lang/String;)[Ljava/lang/String;
+        //   38: astore 6
+        //   40: aload 6
+        //   42: arraylength
+        //   43: anewarray 910    com/newland/alarm/management/base/impl/InteractionRecordImpl
+        //   46: astore 7
+        //   48: new 579    java/util/ArrayList
+        //   51: dup
+        //   52: invokespecial 581    java/util/ArrayList:<init>    ()V
+        //   55: astore 8
+        //   57: new 579    java/util/ArrayList
+        //   60: dup
+        //   61: invokespecial 581    java/util/ArrayList:<init>    ()V
+        //   64: astore 9
+        //   66: iconst_0
+        //   67: istore 10
+        //   69: iconst_0
+        //   70: istore 11
+        //   72: iconst_0
+        //   73: istore 12
+        //   75: iconst_0
+        //   76: istore 13
+        //   78: goto +264 -> 342
+        //   81: aload 6
+        //   83: iload 13
+        //   85: aaload
+        //   86: ldc -86
+        //   88: invokevirtual 162    java/lang/String:split    (Ljava/lang/String;)[Ljava/lang/String;
+        //   91: astore 14
+        //   93: aload 14
+        //   95: iconst_0
+        //   96: aaload
+        //   97: astore 15
+        //   99: aload 14
+        //   101: iconst_1
+        //   102: aaload
+        //   103: astore 16
+        //   105: aload 14
+        //   107: iconst_2
+        //   108: aaload
+        //   109: astore 17
+        //   111: aload 14
+        //   113: iconst_3
+        //   114: aaload
+        //   115: astore 18
+        //   117: aload 14
+        //   119: iconst_4
+        //   120: aaload
+        //   121: astore 19
+        //   123: aload 7
+        //   125: iload 13
+        //   127: new 910    com/newland/alarm/management/base/impl/InteractionRecordImpl
+        //   130: dup
+        //   131: invokespecial 912    com/newland/alarm/management/base/impl/InteractionRecordImpl:<init>    ()V
+        //   134: aastore
+        //   135: aload 7
+        //   137: iload 13
+        //   139: aaload
+        //   140: aload 15
+        //   142: invokevirtual 913    com/newland/alarm/management/base/impl/InteractionRecordImpl:setNotificationId    (Ljava/lang/String;)V
+        //   145: aload 7
+        //   147: iload 13
+        //   149: aaload
+        //   150: aload 16
+        //   152: invokevirtual 916    com/newland/alarm/management/base/impl/InteractionRecordImpl:setApplicationDN    (Ljava/lang/String;)V
+        //   155: aload 7
+        //   157: iload 13
+        //   159: aaload
+        //   160: aload 4
+        //   162: invokevirtual 919    com/newland/alarm/management/base/impl/InteractionRecordImpl:setUserId    (Ljava/lang/String;)V
+        //   165: aload 7
+        //   167: iload 13
+        //   169: aaload
+        //   170: new 630    java/util/Date
+        //   173: dup
+        //   174: invokespecial 848    java/util/Date:<init>    ()V
+        //   177: invokevirtual 922    com/newland/alarm/management/base/impl/InteractionRecordImpl:setTime    (Ljava/util/Date;)V
+        //   180: aload 7
+        //   182: iload 13
+        //   184: aaload
+        //   185: aload_0
+        //   186: getfield 925    com/newland/idc/action/alarmManage/AlarmManageAction:reason    Ljava/lang/String;
+        //   189: invokevirtual 1045    com/newland/alarm/management/base/impl/InteractionRecordImpl:setReserved2    (Ljava/lang/String;)V
+        //   192: ldc_w 930
+        //   195: aload 16
+        //   197: invokevirtual 419    java/lang/String:equals    (Ljava/lang/Object;)Z
+        //   200: ifeq +95 -> 295
+        //   203: new 932    com/newland/dcimalarm/AlarmUtil
+        //   206: dup
+        //   207: invokespecial 934    com/newland/dcimalarm/AlarmUtil:<init>    ()V
+        //   210: astore 20
+        //   212: aload 20
+        //   214: aload 17
+        //   216: invokestatic 174    java/lang/String:valueOf    (Ljava/lang/Object;)Ljava/lang/String;
+        //   219: aload 18
+        //   221: invokestatic 174    java/lang/String:valueOf    (Ljava/lang/Object;)Ljava/lang/String;
+        //   224: aload 19
+        //   226: invokestatic 174    java/lang/String:valueOf    (Ljava/lang/Object;)Ljava/lang/String;
+        //   229: aload 5
+        //   231: invokevirtual 1048    com/newland/dcimalarm/AlarmUtil:newClearAlarm    (Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;)Ljava/lang/String;
+        //   234: astore 21
+        //   236: ldc_w 939
+        //   239: aload 21
+        //   241: invokevirtual 419    java/lang/String:equals    (Ljava/lang/Object;)Z
+        //   244: ifeq +20 -> 264
+        //   247: aload 8
+        //   249: iload 10
+        //   251: aload 7
+        //   253: iload 13
+        //   255: aaload
+        //   256: invokeinterface 941 3 0
+        //   261: iinc 10 1
+        //   264: ldc_w 939
+        //   267: aload 21
+        //   269: invokevirtual 419    java/lang/String:equals    (Ljava/lang/Object;)Z
+        //   272: ifne +67 -> 339
+        //   275: aload 9
+        //   277: iload 11
+        //   279: aload 7
+        //   281: iload 13
+        //   283: aaload
+        //   284: invokeinterface 941 3 0
+        //   289: iinc 11 1
+        //   292: goto +47 -> 339
+        //   295: aload 8
+        //   297: iload 10
+        //   299: aload 7
+        //   301: iload 13
+        //   303: aaload
+        //   304: invokeinterface 941 3 0
+        //   309: iinc 10 1
+        //   312: goto +27 -> 339
+        //   315: astore 20
+        //   317: aload 20
+        //   319: invokevirtual 219    java/lang/Exception:printStackTrace    ()V
+        //   322: aload 9
+        //   324: iload 11
+        //   326: aload 7
+        //   328: iload 13
+        //   330: aaload
+        //   331: invokeinterface 941 3 0
+        //   336: iinc 11 1
+        //   339: iinc 13 1
+        //   342: iload 13
+        //   344: aload 6
+        //   346: arraylength
+        //   347: if_icmplt -266 -> 81
+        //   350: iload 11
+        //   352: ifle +148 -> 500
+        //   355: iconst_0
+        //   356: istore 13
+        //   358: goto +57 -> 415
+        //   361: new 172    java/lang/StringBuilder
+        //   364: dup
+        //   365: aload_3
+        //   366: invokestatic 174    java/lang/String:valueOf    (Ljava/lang/Object;)Ljava/lang/String;
+        //   369: invokespecial 178    java/lang/StringBuilder:<init>    (Ljava/lang/String;)V
+        //   372: ldc_w 944
+        //   375: invokevirtual 180    java/lang/StringBuilder:append    (Ljava/lang/String;)Ljava/lang/StringBuilder;
+        //   378: aload 9
+        //   380: iload 13
+        //   382: invokeinterface 288 2 0
+        //   387: checkcast 910    com/newland/alarm/management/base/impl/InteractionRecordImpl
+        //   390: invokevirtual 946    com/newland/alarm/management/base/impl/InteractionRecordImpl:getNotificationId    ()Ljava/lang/String;
+        //   393: invokevirtual 180    java/lang/StringBuilder:append    (Ljava/lang/String;)Ljava/lang/StringBuilder;
+        //   396: ldc_w 1051
+        //   399: invokevirtual 180    java/lang/StringBuilder:append    (Ljava/lang/String;)Ljava/lang/StringBuilder;
+        //   402: ldc_w 949
+        //   405: invokevirtual 180    java/lang/StringBuilder:append    (Ljava/lang/String;)Ljava/lang/StringBuilder;
+        //   408: invokevirtual 184    java/lang/StringBuilder:toString    ()Ljava/lang/String;
+        //   411: astore_3
+        //   412: iinc 13 1
+        //   415: iload 13
+        //   417: iload 11
+        //   419: if_icmplt -58 -> 361
+        //   422: iconst_0
+        //   423: istore 13
+        //   425: goto +57 -> 482
+        //   428: new 172    java/lang/StringBuilder
+        //   431: dup
+        //   432: aload_3
+        //   433: invokestatic 174    java/lang/String:valueOf    (Ljava/lang/Object;)Ljava/lang/String;
+        //   436: invokespecial 178    java/lang/StringBuilder:<init>    (Ljava/lang/String;)V
+        //   439: ldc_w 944
+        //   442: invokevirtual 180    java/lang/StringBuilder:append    (Ljava/lang/String;)Ljava/lang/StringBuilder;
+        //   445: aload 8
+        //   447: iload 13
+        //   449: invokeinterface 288 2 0
+        //   454: checkcast 910    com/newland/alarm/management/base/impl/InteractionRecordImpl
+        //   457: invokevirtual 946    com/newland/alarm/management/base/impl/InteractionRecordImpl:getNotificationId    ()Ljava/lang/String;
+        //   460: invokevirtual 180    java/lang/StringBuilder:append    (Ljava/lang/String;)Ljava/lang/StringBuilder;
+        //   463: ldc_w 1043
+        //   466: invokevirtual 180    java/lang/StringBuilder:append    (Ljava/lang/String;)Ljava/lang/StringBuilder;
+        //   469: ldc_w 949
+        //   472: invokevirtual 180    java/lang/StringBuilder:append    (Ljava/lang/String;)Ljava/lang/StringBuilder;
+        //   475: invokevirtual 184    java/lang/StringBuilder:toString    ()Ljava/lang/String;
+        //   478: astore_3
+        //   479: iinc 10 1
+        //   482: iload 13
+        //   484: iload 10
+        //   486: if_icmplt -58 -> 428
+        //   489: getstatic 110    com/newland/idc/action/alarmManage/AlarmManageAction:log    Lorg/apache/log4j/Logger;
+        //   492: aload_3
+        //   493: invokevirtual 951    org/apache/log4j/Logger:warn    (Ljava/lang/Object;)V
+        //   496: ldc_w 1053
+        //   499: astore_2
+        //   500: getstatic 110    com/newland/idc/action/alarmManage/AlarmManageAction:log    Lorg/apache/log4j/Logger;
+        //   503: new 172    java/lang/StringBuilder
+        //   506: dup
+        //   507: ldc_w 1055
+        //   510: invokespecial 178    java/lang/StringBuilder:<init>    (Ljava/lang/String;)V
+        //   513: aload 8
+        //   515: invokeinterface 296 1 0
+        //   520: invokevirtual 958    java/lang/StringBuilder:append    (I)Ljava/lang/StringBuilder;
+        //   523: invokevirtual 184    java/lang/StringBuilder:toString    ()Ljava/lang/String;
+        //   526: invokevirtual 961    org/apache/log4j/Logger:info    (Ljava/lang/Object;)V
+        //   529: aload 8
+        //   531: invokeinterface 296 1 0
+        //   536: ifeq +332 -> 868
+        //   539: new 579    java/util/ArrayList
+        //   542: dup
+        //   543: invokespecial 581    java/util/ArrayList:<init>    ()V
+        //   546: astore 13
+        //   548: iconst_0
+        //   549: istore 14
+        //   551: goto +214 -> 765
+        //   554: aload 8
+        //   556: iload 14
+        //   558: invokeinterface 288 2 0
+        //   563: checkcast 910    com/newland/alarm/management/base/impl/InteractionRecordImpl
+        //   566: invokevirtual 946    com/newland/alarm/management/base/impl/InteractionRecordImpl:getNotificationId    ()Ljava/lang/String;
+        //   569: astore 15
+        //   571: aload_0
+        //   572: aload_0
+        //   573: getfield 188    com/newland/idc/action/alarmManage/AlarmManageAction:alarmService    Lcom/newland/idc/service/AlarmService;
+        //   576: aload 15
+        //   578: invokeinterface 968 2 0
+        //   583: putfield 971    com/newland/idc/action/alarmManage/AlarmManageAction:noCpsClearAlarmList    Ljava/util/List;
+        //   586: iconst_0
+        //   587: istore 16
+        //   589: goto +159 -> 748
+        //   592: aload 13
+        //   594: iload 12
+        //   596: new 910    com/newland/alarm/management/base/impl/InteractionRecordImpl
+        //   599: dup
+        //   600: invokespecial 912    com/newland/alarm/management/base/impl/InteractionRecordImpl:<init>    ()V
+        //   603: invokeinterface 941 3 0
+        //   608: aload 13
+        //   610: iload 12
+        //   612: invokeinterface 288 2 0
+        //   617: checkcast 910    com/newland/alarm/management/base/impl/InteractionRecordImpl
+        //   620: aload_0
+        //   621: getfield 971    com/newland/idc/action/alarmManage/AlarmManageAction:noCpsClearAlarmList    Ljava/util/List;
+        //   624: iload 16
+        //   626: invokeinterface 288 2 0
+        //   631: checkcast 294    java/util/HashMap
+        //   634: ldc_w 454
+        //   637: invokevirtual 304    java/util/HashMap:get    (Ljava/lang/Object;)Ljava/lang/Object;
+        //   640: checkcast 163    java/lang/String
+        //   643: invokevirtual 913    com/newland/alarm/management/base/impl/InteractionRecordImpl:setNotificationId    (Ljava/lang/String;)V
+        //   646: aload 13
+        //   648: iload 12
+        //   650: invokeinterface 288 2 0
+        //   655: checkcast 910    com/newland/alarm/management/base/impl/InteractionRecordImpl
+        //   658: aload_0
+        //   659: getfield 971    com/newland/idc/action/alarmManage/AlarmManageAction:noCpsClearAlarmList    Ljava/util/List;
+        //   662: iload 16
+        //   664: invokeinterface 288 2 0
+        //   669: checkcast 294    java/util/HashMap
+        //   672: ldc_w 973
+        //   675: invokevirtual 304    java/util/HashMap:get    (Ljava/lang/Object;)Ljava/lang/Object;
+        //   678: checkcast 163    java/lang/String
+        //   681: invokevirtual 916    com/newland/alarm/management/base/impl/InteractionRecordImpl:setApplicationDN    (Ljava/lang/String;)V
+        //   684: aload 13
+        //   686: iload 12
+        //   688: invokeinterface 288 2 0
+        //   693: checkcast 910    com/newland/alarm/management/base/impl/InteractionRecordImpl
+        //   696: aload 4
+        //   698: invokevirtual 919    com/newland/alarm/management/base/impl/InteractionRecordImpl:setUserId    (Ljava/lang/String;)V
+        //   701: aload 13
+        //   703: iload 12
+        //   705: invokeinterface 288 2 0
+        //   710: checkcast 910    com/newland/alarm/management/base/impl/InteractionRecordImpl
+        //   713: new 630    java/util/Date
+        //   716: dup
+        //   717: invokespecial 848    java/util/Date:<init>    ()V
+        //   720: invokevirtual 922    com/newland/alarm/management/base/impl/InteractionRecordImpl:setTime    (Ljava/util/Date;)V
+        //   723: aload 13
+        //   725: iload 12
+        //   727: invokeinterface 288 2 0
+        //   732: checkcast 910    com/newland/alarm/management/base/impl/InteractionRecordImpl
+        //   735: aload_0
+        //   736: getfield 925    com/newland/idc/action/alarmManage/AlarmManageAction:reason    Ljava/lang/String;
+        //   739: invokevirtual 1045    com/newland/alarm/management/base/impl/InteractionRecordImpl:setReserved2    (Ljava/lang/String;)V
+        //   742: iinc 12 1
+        //   745: iinc 16 1
+        //   748: iload 16
+        //   750: aload_0
+        //   751: getfield 971    com/newland/idc/action/alarmManage/AlarmManageAction:noCpsClearAlarmList    Ljava/util/List;
+        //   754: invokeinterface 296 1 0
+        //   759: if_icmplt -167 -> 592
+        //   762: iinc 14 1
+        //   765: iload 14
+        //   767: aload 8
+        //   769: invokeinterface 296 1 0
+        //   774: if_icmplt -220 -> 554
+        //   777: iload 12
+        //   779: anewarray 910    com/newland/alarm/management/base/impl/InteractionRecordImpl
+        //   782: astore 14
+        //   784: iconst_0
+        //   785: istore 15
+        //   787: goto +23 -> 810
+        //   790: aload 14
+        //   792: iload 15
+        //   794: aload 13
+        //   796: iload 15
+        //   798: invokeinterface 288 2 0
+        //   803: checkcast 910    com/newland/alarm/management/base/impl/InteractionRecordImpl
+        //   806: aastore
+        //   807: iinc 15 1
+        //   810: iload 15
+        //   812: iload 12
+        //   814: if_icmplt -24 -> 790
+        //   817: new 630    java/util/Date
+        //   820: dup
+        //   821: invokespecial 848    java/util/Date:<init>    ()V
+        //   824: astore 15
+        //   826: aload 15
+        //   828: aload_1
+        //   829: iconst_3
+        //   830: invokestatic 975    com/newland/commons/dateutil/DateUtil:diffDate    (Ljava/util/Date;Ljava/util/Date;I)J
+        //   833: lstore 16
+        //   835: getstatic 981    java/lang/System:out    Ljava/io/PrintStream;
+        //   838: new 172    java/lang/StringBuilder
+        //   841: dup
+        //   842: ldc_w 1057
+        //   845: invokespecial 178    java/lang/StringBuilder:<init>    (Ljava/lang/String;)V
+        //   848: lload 16
+        //   850: invokevirtual 988    java/lang/StringBuilder:append    (J)Ljava/lang/StringBuilder;
+        //   853: invokevirtual 184    java/lang/StringBuilder:toString    ()Ljava/lang/String;
+        //   856: invokevirtual 991    java/io/PrintStream:println    (Ljava/lang/String;)V
+        //   859: invokestatic 996    com/newland/idc/action/alarmManage/UserInteractorClientSupport:getInstance    ()Lcom/newland/idc/action/alarmManage/UserInteractorClientSupport;
+        //   862: aload 14
+        //   864: invokevirtual 1059    com/newland/idc/action/alarmManage/UserInteractorClientSupport:ClearedAlarms    ([Lcom/newland/alarm/management/base/impl/InteractionRecordImpl;)Ljava/util/List;
+        //   867: pop
+        //   868: new 630    java/util/Date
+        //   871: dup
+        //   872: invokespecial 848    java/util/Date:<init>    ()V
+        //   875: astore 13
+        //   877: aload 13
+        //   879: aload_1
+        //   880: iconst_3
+        //   881: invokestatic 975    com/newland/commons/dateutil/DateUtil:diffDate    (Ljava/util/Date;Ljava/util/Date;I)J
+        //   884: lstore 14
+        //   886: getstatic 981    java/lang/System:out    Ljava/io/PrintStream;
+        //   889: new 172    java/lang/StringBuilder
+        //   892: dup
+        //   893: ldc_w 1062
+        //   896: invokespecial 178    java/lang/StringBuilder:<init>    (Ljava/lang/String;)V
+        //   899: lload 14
+        //   901: invokevirtual 988    java/lang/StringBuilder:append    (J)Ljava/lang/StringBuilder;
+        //   904: invokevirtual 184    java/lang/StringBuilder:toString    ()Ljava/lang/String;
+        //   907: invokevirtual 991    java/io/PrintStream:println    (Ljava/lang/String;)V
+        //   910: goto +32 -> 942
+        //   913: astore 4
+        //   915: aload 4
+        //   917: invokevirtual 219    java/lang/Exception:printStackTrace    ()V
+        //   920: ldc_w 1051
+        //   923: astore_2
+        //   924: aload_0
+        //   925: aload_2
+        //   926: invokevirtual 1005    com/newland/idc/action/alarmManage/AlarmManageAction:ajaxBack    (Ljava/lang/Object;)V
+        //   929: goto +18 -> 947
+        //   932: astore 22
+        //   934: aload_0
+        //   935: aload_2
+        //   936: invokevirtual 1005    com/newland/idc/action/alarmManage/AlarmManageAction:ajaxBack    (Ljava/lang/Object;)V
+        //   939: aload 22
+        //   941: athrow
+        //   942: aload_0
+        //   943: aload_2
+        //   944: invokevirtual 1005    com/newland/idc/action/alarmManage/AlarmManageAction:ajaxBack    (Ljava/lang/Object;)V
+        //   947: return
+        // Line number table:
+        //   Java source line #1509    -> byte code offset #0
+        //   Java source line #1510    -> byte code offset #8
+        //   Java source line #1511    -> byte code offset #12
+        //   Java source line #1513    -> byte code offset #15
+        //   Java source line #1514    -> byte code offset #21
+        //   Java source line #1515    -> byte code offset #29
+        //   Java source line #1516    -> byte code offset #40
+        //   Java source line #1517    -> byte code offset #48
+        //   Java source line #1518    -> byte code offset #57
+        //   Java source line #1520    -> byte code offset #66
+        //   Java source line #1521    -> byte code offset #69
+        //   Java source line #1522    -> byte code offset #72
+        //   Java source line #1523    -> byte code offset #75
+        //   Java source line #1524    -> byte code offset #81
+        //   Java source line #1525    -> byte code offset #93
+        //   Java source line #1526    -> byte code offset #99
+        //   Java source line #1527    -> byte code offset #105
+        //   Java source line #1528    -> byte code offset #111
+        //   Java source line #1529    -> byte code offset #117
+        //   Java source line #1530    -> byte code offset #123
+        //   Java source line #1531    -> byte code offset #135
+        //   Java source line #1532    -> byte code offset #145
+        //   Java source line #1533    -> byte code offset #155
+        //   Java source line #1534    -> byte code offset #165
+        //   Java source line #1535    -> byte code offset #180
+        //   Java source line #1538    -> byte code offset #192
+        //   Java source line #1539    -> byte code offset #203
+        //   Java source line #1540    -> byte code offset #212
+        //   Java source line #1541    -> byte code offset #219
+        //   Java source line #1540    -> byte code offset #231
+        //   Java source line #1542    -> byte code offset #236
+        //   Java source line #1543    -> byte code offset #247
+        //   Java source line #1544    -> byte code offset #261
+        //   Java source line #1546    -> byte code offset #264
+        //   Java source line #1547    -> byte code offset #275
+        //   Java source line #1548    -> byte code offset #289
+        //   Java source line #1550    -> byte code offset #292
+        //   Java source line #1551    -> byte code offset #295
+        //   Java source line #1552    -> byte code offset #309
+        //   Java source line #1554    -> byte code offset #312
+        //   Java source line #1555    -> byte code offset #317
+        //   Java source line #1556    -> byte code offset #322
+        //   Java source line #1557    -> byte code offset #336
+        //   Java source line #1523    -> byte code offset #339
+        //   Java source line #1560    -> byte code offset #350
+        //   Java source line #1561    -> byte code offset #355
+        //   Java source line #1562    -> byte code offset #361
+        //   Java source line #1561    -> byte code offset #412
+        //   Java source line #1564    -> byte code offset #422
+        //   Java source line #1565    -> byte code offset #428
+        //   Java source line #1564    -> byte code offset #479
+        //   Java source line #1567    -> byte code offset #489
+        //   Java source line #1568    -> byte code offset #496
+        //   Java source line #1570    -> byte code offset #500
+        //   Java source line #1571    -> byte code offset #529
+        //   Java source line #1572    -> byte code offset #539
+        //   Java source line #1573    -> byte code offset #548
+        //   Java source line #1574    -> byte code offset #554
+        //   Java source line #1575    -> byte code offset #571
+        //   Java source line #1576    -> byte code offset #586
+        //   Java source line #1577    -> byte code offset #592
+        //   Java source line #1578    -> byte code offset #608
+        //   Java source line #1579    -> byte code offset #646
+        //   Java source line #1580    -> byte code offset #684
+        //   Java source line #1581    -> byte code offset #701
+        //   Java source line #1582    -> byte code offset #723
+        //   Java source line #1583    -> byte code offset #742
+        //   Java source line #1576    -> byte code offset #745
+        //   Java source line #1573    -> byte code offset #762
+        //   Java source line #1586    -> byte code offset #777
+        //   Java source line #1587    -> byte code offset #784
+        //   Java source line #1588    -> byte code offset #790
+        //   Java source line #1587    -> byte code offset #807
+        //   Java source line #1590    -> byte code offset #817
+        //   Java source line #1591    -> byte code offset #826
+        //   Java source line #1592    -> byte code offset #835
+        //   Java source line #1593    -> byte code offset #859
+        //   Java source line #1595    -> byte code offset #868
+        //   Java source line #1596    -> byte code offset #877
+        //   Java source line #1597    -> byte code offset #886
+        //   Java source line #1598    -> byte code offset #910
+        //   Java source line #1599    -> byte code offset #915
+        //   Java source line #1600    -> byte code offset #920
+        //   Java source line #1602    -> byte code offset #924
+        //   Java source line #1601    -> byte code offset #932
+        //   Java source line #1602    -> byte code offset #934
+        //   Java source line #1603    -> byte code offset #939
+        //   Java source line #1602    -> byte code offset #942
+        //   Java source line #1604    -> byte code offset #947
+        // Local variable table:
+        //   start    length    slot    name    signature
+        //   0    948    0    this    AlarmManageAction
+        //   7    873    1    date1    Date
+        //   11    933    2    result    String
+        //   14    479    3    resultStr    String
+        //   19    678    4    userId    String
+        //   913    3    4    e    Exception
+        //   27    203    5    ackUser    String
+        //   38    307    6    recordArray    String[]
+        //   46    281    7    records    InteractionRecordImpl[]
+        //   55    713    8    sucrecords    List<InteractionRecordImpl>
+        //   64    315    9    failrecords    List<InteractionRecordImpl>
+        //   67    418    10    j    int
+        //   70    348    11    k    int
+        //   73    740    12    l    int
+        //   76    267    13    i    int
+        //   356    60    13    h    int
+        //   423    60    13    g    int
+        //   546    249    13    finalrecords    List<InteractionRecordImpl>
+        //   875    3    13    date2    Date
+        //   91    27    14    recordInfo    String[]
+        //   549    217    14    m    int
+        //   782    81    14    finalrecords1    InteractionRecordImpl[]
+        //   884    16    14    diffTime2    long
+        //   97    44    15    notificationId    String
+        //   569    8    15    statuInfo    String
+        //   785    26    15    p    int
+        //   824    3    15    date3    Date
+        //   103    93    16    applicationDN    String
+        //   587    162    16    n    int
+        //   833    16    16    diffTime2    long
+        //   109    106    17    sysIntId    String
+        //   115    105    18    alnum1    String
+        //   121    104    19    visual    String
+        //   210    3    20    util    com.newland.dcimalarm.AlarmUtil
+        //   315    3    20    e    Exception
+        //   234    34    21    resultStatus    String
+        //   932    8    22    localObject    Object
+        // Exception table:
+        //   from    to    target    type
+        //   192    312    315    java/lang/Exception
+        //   15    910    913    java/lang/Exception
+        //   15    924    932    finally
+    }
+    
+    /* Error */
+    public void assignWd()
+    {
+        // Byte code:
+        //   0: ldc_w 1065
+        //   3: astore_1
+        //   4: aload_0
+        //   5: invokevirtual 385    com/newland/idc/action/alarmManage/AlarmManageAction:getUserid    ()Ljava/lang/String;
+        //   8: astore_2
+        //   9: aload_0
+        //   10: getfield 158    com/newland/idc/action/alarmManage/AlarmManageAction:notificationIds    Ljava/lang/String;
+        //   13: ldc -96
+        //   15: invokevirtual 162    java/lang/String:split    (Ljava/lang/String;)[Ljava/lang/String;
+        //   18: astore_3
+        //   19: aload_3
+        //   20: arraylength
+        //   21: anewarray 910    com/newland/alarm/management/base/impl/InteractionRecordImpl
+        //   24: astore 4
+        //   26: iconst_0
+        //   27: istore 5
+        //   29: goto +97 -> 126
+        //   32: aload_3
+        //   33: iload 5
+        //   35: aaload
+        //   36: ldc -86
+        //   38: invokevirtual 162    java/lang/String:split    (Ljava/lang/String;)[Ljava/lang/String;
+        //   41: astore 6
+        //   43: aload 6
+        //   45: iconst_0
+        //   46: aaload
+        //   47: astore 7
+        //   49: aload 6
+        //   51: iconst_1
+        //   52: aaload
+        //   53: astore 8
+        //   55: aload 4
+        //   57: iload 5
+        //   59: new 910    com/newland/alarm/management/base/impl/InteractionRecordImpl
+        //   62: dup
+        //   63: invokespecial 912    com/newland/alarm/management/base/impl/InteractionRecordImpl:<init>    ()V
+        //   66: aastore
+        //   67: aload 4
+        //   69: iload 5
+        //   71: aaload
+        //   72: aload 7
+        //   74: invokevirtual 913    com/newland/alarm/management/base/impl/InteractionRecordImpl:setNotificationId    (Ljava/lang/String;)V
+        //   77: aload 4
+        //   79: iload 5
+        //   81: aaload
+        //   82: aload 8
+        //   84: invokevirtual 916    com/newland/alarm/management/base/impl/InteractionRecordImpl:setApplicationDN    (Ljava/lang/String;)V
+        //   87: aload 4
+        //   89: iload 5
+        //   91: aaload
+        //   92: aload_2
+        //   93: invokevirtual 919    com/newland/alarm/management/base/impl/InteractionRecordImpl:setUserId    (Ljava/lang/String;)V
+        //   96: aload 4
+        //   98: iload 5
+        //   100: aaload
+        //   101: new 630    java/util/Date
+        //   104: dup
+        //   105: invokespecial 848    java/util/Date:<init>    ()V
+        //   108: invokevirtual 922    com/newland/alarm/management/base/impl/InteractionRecordImpl:setTime    (Ljava/util/Date;)V
+        //   111: aload 4
+        //   113: iload 5
+        //   115: aaload
+        //   116: aload_0
+        //   117: getfield 512    com/newland/idc/action/alarmManage/AlarmManageAction:billId    Ljava/lang/String;
+        //   120: invokevirtual 1067    com/newland/alarm/management/base/impl/InteractionRecordImpl:setBillId    (Ljava/lang/String;)V
+        //   123: iinc 5 1
+        //   126: iload 5
+        //   128: aload_3
+        //   129: arraylength
+        //   130: if_icmplt -98 -> 32
+        //   133: getstatic 110    com/newland/idc/action/alarmManage/AlarmManageAction:log    Lorg/apache/log4j/Logger;
+        //   136: new 172    java/lang/StringBuilder
+        //   139: dup
+        //   140: ldc_w 1070
+        //   143: invokespecial 178    java/lang/StringBuilder:<init>    (Ljava/lang/String;)V
+        //   146: aload 4
+        //   148: arraylength
+        //   149: invokevirtual 958    java/lang/StringBuilder:append    (I)Ljava/lang/StringBuilder;
+        //   152: invokevirtual 184    java/lang/StringBuilder:toString    ()Ljava/lang/String;
+        //   155: invokevirtual 961    org/apache/log4j/Logger:info    (Ljava/lang/Object;)V
+        //   158: invokestatic 996    com/newland/idc/action/alarmManage/UserInteractorClientSupport:getInstance    ()Lcom/newland/idc/action/alarmManage/UserInteractorClientSupport;
+        //   161: aload 4
+        //   163: invokevirtual 1072    com/newland/idc/action/alarmManage/UserInteractorClientSupport:assignWd    ([Lcom/newland/alarm/management/base/impl/InteractionRecordImpl;)V
+        //   166: goto +30 -> 196
+        //   169: astore_2
+        //   170: aload_2
+        //   171: invokevirtual 219    java/lang/Exception:printStackTrace    ()V
+        //   174: ldc_w 1075
+        //   177: astore_1
+        //   178: aload_0
+        //   179: aload_1
+        //   180: invokevirtual 1005    com/newland/idc/action/alarmManage/AlarmManageAction:ajaxBack    (Ljava/lang/Object;)V
+        //   183: goto +18 -> 201
+        //   186: astore 9
+        //   188: aload_0
+        //   189: aload_1
+        //   190: invokevirtual 1005    com/newland/idc/action/alarmManage/AlarmManageAction:ajaxBack    (Ljava/lang/Object;)V
+        //   193: aload 9
+        //   195: athrow
+        //   196: aload_0
+        //   197: aload_1
+        //   198: invokevirtual 1005    com/newland/idc/action/alarmManage/AlarmManageAction:ajaxBack    (Ljava/lang/Object;)V
+        //   201: return
+        // Line number table:
+        //   Java source line #1610    -> byte code offset #0
+        //   Java source line #1612    -> byte code offset #4
+        //   Java source line #1613    -> byte code offset #9
+        //   Java source line #1614    -> byte code offset #19
+        //   Java source line #1615    -> byte code offset #26
+        //   Java source line #1616    -> byte code offset #32
+        //   Java source line #1617    -> byte code offset #43
+        //   Java source line #1618    -> byte code offset #49
+        //   Java source line #1619    -> byte code offset #55
+        //   Java source line #1620    -> byte code offset #67
+        //   Java source line #1621    -> byte code offset #77
+        //   Java source line #1622    -> byte code offset #87
+        //   Java source line #1623    -> byte code offset #96
+        //   Java source line #1624    -> byte code offset #111
+        //   Java source line #1615    -> byte code offset #123
+        //   Java source line #1626    -> byte code offset #133
+        //   Java source line #1627    -> byte code offset #158
+        //   Java source line #1628    -> byte code offset #166
+        //   Java source line #1629    -> byte code offset #170
+        //   Java source line #1630    -> byte code offset #174
+        //   Java source line #1632    -> byte code offset #178
+        //   Java source line #1631    -> byte code offset #186
+        //   Java source line #1632    -> byte code offset #188
+        //   Java source line #1633    -> byte code offset #193
+        //   Java source line #1632    -> byte code offset #196
+        //   Java source line #1634    -> byte code offset #201
+        // Local variable table:
+        //   start    length    slot    name    signature
+        //   0    202    0    this    AlarmManageAction
+        //   3    195    1    result    String
+        //   8    85    2    userId    String
+        //   169    2    2    e    Exception
+        //   18    111    3    recordArray    String[]
+        //   24    138    4    records    InteractionRecordImpl[]
+        //   27    100    5    i    int
+        //   41    9    6    recordInfo    String[]
+        //   47    26    7    notificationId    String
+        //   53    30    8    applicationDN    String
+        //   186    8    9    localObject    Object
+        // Exception table:
+        //   from    to    target    type
+        //   4    166    169    java/lang/Exception
+        //   4    178    186    finally
+    }
+    
+    public String gotoStopAssignWd()
+    {
+        String userId = getUserid();
+        this.createUserName = getUserName(userId);
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+        this.createDate = sdf.format(new Date());
+        return "success";
+    }
+    
+    /* Error */
+    public void stopAssignWd()
+    {
+        // Byte code:
+        //   0: ldc_w 1079
+        //   3: astore_1
+        //   4: aload_0
+        //   5: invokevirtual 385    com/newland/idc/action/alarmManage/AlarmManageAction:getUserid    ()Ljava/lang/String;
+        //   8: astore_2
+        //   9: aload_0
+        //   10: getfield 158    com/newland/idc/action/alarmManage/AlarmManageAction:notificationIds    Ljava/lang/String;
+        //   13: ldc -96
+        //   15: invokevirtual 162    java/lang/String:split    (Ljava/lang/String;)[Ljava/lang/String;
+        //   18: astore_3
+        //   19: aload_3
+        //   20: arraylength
+        //   21: anewarray 910    com/newland/alarm/management/base/impl/InteractionRecordImpl
+        //   24: astore 4
+        //   26: iconst_0
+        //   27: istore 5
+        //   29: goto +97 -> 126
+        //   32: aload_3
+        //   33: iload 5
+        //   35: aaload
+        //   36: ldc -86
+        //   38: invokevirtual 162    java/lang/String:split    (Ljava/lang/String;)[Ljava/lang/String;
+        //   41: astore 6
+        //   43: aload 6
+        //   45: iconst_0
+        //   46: aaload
+        //   47: astore 7
+        //   49: aload 6
+        //   51: iconst_1
+        //   52: aaload
+        //   53: astore 8
+        //   55: aload 4
+        //   57: iload 5
+        //   59: new 910    com/newland/alarm/management/base/impl/InteractionRecordImpl
+        //   62: dup
+        //   63: invokespecial 912    com/newland/alarm/management/base/impl/InteractionRecordImpl:<init>    ()V
+        //   66: aastore
+        //   67: aload 4
+        //   69: iload 5
+        //   71: aaload
+        //   72: aload 7
+        //   74: invokevirtual 913    com/newland/alarm/management/base/impl/InteractionRecordImpl:setNotificationId    (Ljava/lang/String;)V
+        //   77: aload 4
+        //   79: iload 5
+        //   81: aaload
+        //   82: aload 8
+        //   84: invokevirtual 916    com/newland/alarm/management/base/impl/InteractionRecordImpl:setApplicationDN    (Ljava/lang/String;)V
+        //   87: aload 4
+        //   89: iload 5
+        //   91: aaload
+        //   92: aload_2
+        //   93: invokevirtual 919    com/newland/alarm/management/base/impl/InteractionRecordImpl:setUserId    (Ljava/lang/String;)V
+        //   96: aload 4
+        //   98: iload 5
+        //   100: aaload
+        //   101: new 630    java/util/Date
+        //   104: dup
+        //   105: invokespecial 848    java/util/Date:<init>    ()V
+        //   108: invokevirtual 922    com/newland/alarm/management/base/impl/InteractionRecordImpl:setTime    (Ljava/util/Date;)V
+        //   111: aload 4
+        //   113: iload 5
+        //   115: aaload
+        //   116: aload_0
+        //   117: getfield 925    com/newland/idc/action/alarmManage/AlarmManageAction:reason    Ljava/lang/String;
+        //   120: invokevirtual 1081    com/newland/alarm/management/base/impl/InteractionRecordImpl:setUnassignReason    (Ljava/lang/String;)V
+        //   123: iinc 5 1
+        //   126: iload 5
+        //   128: aload_3
+        //   129: arraylength
+        //   130: if_icmplt -98 -> 32
+        //   133: getstatic 110    com/newland/idc/action/alarmManage/AlarmManageAction:log    Lorg/apache/log4j/Logger;
+        //   136: new 172    java/lang/StringBuilder
+        //   139: dup
+        //   140: ldc_w 1084
+        //   143: invokespecial 178    java/lang/StringBuilder:<init>    (Ljava/lang/String;)V
+        //   146: aload 4
+        //   148: arraylength
+        //   149: invokevirtual 958    java/lang/StringBuilder:append    (I)Ljava/lang/StringBuilder;
+        //   152: invokevirtual 184    java/lang/StringBuilder:toString    ()Ljava/lang/String;
+        //   155: invokevirtual 961    org/apache/log4j/Logger:info    (Ljava/lang/Object;)V
+        //   158: invokestatic 996    com/newland/idc/action/alarmManage/UserInteractorClientSupport:getInstance    ()Lcom/newland/idc/action/alarmManage/UserInteractorClientSupport;
+        //   161: aload 4
+        //   163: invokevirtual 1086    com/newland/idc/action/alarmManage/UserInteractorClientSupport:StopAssignWd    ([Lcom/newland/alarm/management/base/impl/InteractionRecordImpl;)V
+        //   166: goto +30 -> 196
+        //   169: astore_2
+        //   170: aload_2
+        //   171: invokevirtual 219    java/lang/Exception:printStackTrace    ()V
+        //   174: ldc_w 1089
+        //   177: astore_1
+        //   178: aload_0
+        //   179: aload_1
+        //   180: invokevirtual 1005    com/newland/idc/action/alarmManage/AlarmManageAction:ajaxBack    (Ljava/lang/Object;)V
+        //   183: goto +18 -> 201
+        //   186: astore 9
+        //   188: aload_0
+        //   189: aload_1
+        //   190: invokevirtual 1005    com/newland/idc/action/alarmManage/AlarmManageAction:ajaxBack    (Ljava/lang/Object;)V
+        //   193: aload 9
+        //   195: athrow
+        //   196: aload_0
+        //   197: aload_1
+        //   198: invokevirtual 1005    com/newland/idc/action/alarmManage/AlarmManageAction:ajaxBack    (Ljava/lang/Object;)V
+        //   201: return
+        // Line number table:
+        //   Java source line #1653    -> byte code offset #0
+        //   Java source line #1655    -> byte code offset #4
+        //   Java source line #1656    -> byte code offset #9
+        //   Java source line #1657    -> byte code offset #19
+        //   Java source line #1658    -> byte code offset #26
+        //   Java source line #1659    -> byte code offset #32
+        //   Java source line #1660    -> byte code offset #43
+        //   Java source line #1661    -> byte code offset #49
+        //   Java source line #1662    -> byte code offset #55
+        //   Java source line #1663    -> byte code offset #67
+        //   Java source line #1664    -> byte code offset #77
+        //   Java source line #1665    -> byte code offset #87
+        //   Java source line #1666    -> byte code offset #96
+        //   Java source line #1667    -> byte code offset #111
+        //   Java source line #1658    -> byte code offset #123
+        //   Java source line #1669    -> byte code offset #133
+        //   Java source line #1670    -> byte code offset #158
+        //   Java source line #1671    -> byte code offset #166
+        //   Java source line #1672    -> byte code offset #170
+        //   Java source line #1673    -> byte code offset #174
+        //   Java source line #1675    -> byte code offset #178
+        //   Java source line #1674    -> byte code offset #186
+        //   Java source line #1675    -> byte code offset #188
+        //   Java source line #1676    -> byte code offset #193
+        //   Java source line #1675    -> byte code offset #196
+        //   Java source line #1677    -> byte code offset #201
+        // Local variable table:
+        //   start    length    slot    name    signature
+        //   0    202    0    this    AlarmManageAction
+        //   3    195    1    result    String
+        //   8    85    2    userId    String
+        //   169    2    2    e    Exception
+        //   18    111    3    recordArray    String[]
+        //   24    138    4    records    InteractionRecordImpl[]
+        //   27    100    5    i    int
+        //   41    9    6    recordInfo    String[]
+        //   47    26    7    notificationId    String
+        //   53    30    8    applicationDN    String
+        //   186    8    9    localObject    Object
+        // Exception table:
+        //   from    to    target    type
+        //   4    166    169    java/lang/Exception
+        //   4    178    186    finally
+    }
+    
+    public String gotoRedefineAlarm()
+    {
+        return "success";
+    }
+    
+    public void redefineAlarms()
+    {
+        String result = "������������������������";
+        String userId = getUserid();
+        String[] recordArray = this.notificationIds.split(",");
+        InteractionRecordImpl[] records = new InteractionRecordImpl[recordArray.length];
+        for (int i = 0; i < recordArray.length; i++)
+        {
+            recordInfo = recordArray[i].split("\\|");
+            String notificationId = recordInfo[0];
+            String applicationDN = recordInfo[1];
+            records[i] = new InteractionRecordImpl();
+            records[i].setNotificationId(notificationId);
+            records[i].setApplicationDN(applicationDN);
+            records[i].setUserId(userId);
+            records[i].setTime(new Date());
+            records[i].setSeverity(Integer.parseInt(this.severity));
+        }
+        log.info("redefineAlarms.size=" + records.length);
+        try
+        {
+            UserInteractorClientSupport.getInstance().RedefineAlarms(records);
+        }
+        catch (Exception e)
+        {
+            e.printStackTrace();
+            result = "������������������������";
+        }
+        finally
+        {
+            ajaxBack(result);
+        }
+    }
+    
+    public String gotoSmsSend()
+    {
+        String[] notificationIdArray = this.notificationIds.split(",");
+        this.sendMessage = "";
+        for (int i = 0; i < notificationIdArray.length; i++) {
+            if (i == notificationIdArray.length - 1) {
+                this.sendMessage = (this.sendMessage + "���" + (i + 1) + "������" + notificationIdArray[i] + "������");
+            } else {
+                this.sendMessage = (this.sendMessage + "���" + (i + 1) + "������" + notificationIdArray[i] + "������\r\n");
+            }
+        }
+        return "success";
+    }
+    
+    public void smsSend()
+    {
+        String result = "���������������������";
+        String[] sendPhoneArray = this.sendPhone.split(",");
+        for (int i = 0; i < sendPhoneArray.length; i++)
+        {
+            String sql = " INSERT INTO T_SM_SMS_SEND(ID, MOBILE, CONTENT) VALUES  (f_nextval('SEQ_SMS_SEND'), '" +
+            sendPhoneArray[i] + "', '" + this.sendMessage + "') ";
+            DBUtil dbUtil = new DBUtil();
+            try
+            {
+                dbUtil.executeUpdate(sql);
+            }
+            catch (SQLException e)
+            {
+                result = "���������������������";
+                log.error("���������������������");
+                e.printStackTrace();
+                break;
+            }
+        }
+        ajaxBack(result);
+    }
+    
+    public String gotoSetting()
+    {
+        return "success";
+    }
+    
+    public String queryAlarmIndicatorAnalizeList1()
+    {
+        StringBuffer conditions = new StringBuffer();
+        
+        String orderCondition = "";
+        String timeCondition = getTimeConditions();
+        conditions.append(timeCondition);
+        if ((this.orderColumn != null) && (!"".equals(this.orderColumn))) {
+            orderCondition = " order by " + this.orderColumn + " " + this.orderType;
+        }
+        conditions.append(" group by START_TIME, RES_TYPE");
+        
+        conditions.append(orderCondition);
+        
+        savePageNum();
+        int index = (this.iPageNum - 1) * this.PAGE_NUM;
+        if (index < 0) {
+            index = 0;
+        }
+        String countConditions = conditions.toString();
+        int rowCount = this.alarmService.getResultCount2(countConditions);
+        if ((index != 0) && (rowCount < index + 1))
+        {
+            this.iPageNum -= 1;
+            this.pageNum = this.iPageNum;
+            index = (this.iPageNum - 1) * this.PAGE_NUM;
+        }
+        if ((this.ex_type != null) && (!"".equals(this.ex_type)))
+        {
+            try
+            {
+                this.resultList = this.alarmService.getAlarmIndicatorAnalizeList(conditions.toString(), 0, rowCount);
+                convertList(this.resultList, "1");
+            }
+            catch (Exception e)
+            {
+                e.printStackTrace();
+                log.error("������������������������������������������");
+            }
+            return null;
+        }
+        this.resultList = this.alarmService.getAlarmIndicatorAnalizeList(conditions.toString(), index, this.PAGE_NUM);
+        convertList(this.resultList, "1");
+        
+        this.pageSpliter = new PageSpliterBean(this.iPageNum, this.PAGE_NUM, rowCount, this.resultList);
+        this.pageHtml = this.pageSpliter.getPageSpliterHtml();
+        return "success";
+    }
+    
+    public String queryAlarmIndicatorAnalizeList2()
+    {
+        StringBuffer conditions = new StringBuffer();
+        
+        String orderCondition = "";
+        String timeCondition = getTimeConditions();
+        conditions.append(timeCondition);
+        if ((this.orderColumn != null) && (!"".equals(this.orderColumn))) {
+            orderCondition = " order by " + this.orderColumn + " " + this.orderType;
+        }
+        conditions.append(" group by START_TIME, ALARM_TYPE");
+        
+        conditions.append(orderCondition);
+        
+        savePageNum();
+        int index = (this.iPageNum - 1) * this.PAGE_NUM;
+        if (index < 0) {
+            index = 0;
+        }
+        String countConditions = conditions.toString();
+        int rowCount = this.alarmService.getResultCount2(countConditions);
+        if ((index != 0) && (rowCount < index + 1))
+        {
+            this.iPageNum -= 1;
+            this.pageNum = this.iPageNum;
+            index = (this.iPageNum - 1) * this.PAGE_NUM;
+        }
+        if ((this.ex_type != null) && (!"".equals(this.ex_type)))
+        {
+            try
+            {
+                this.resultList = this.alarmService.getAlarmIndicatorAnalizeList(conditions.toString(), 0, rowCount);
+                convertList(this.resultList, "2");
+            }
+            catch (Exception e)
+            {
+                e.printStackTrace();
+                log.error("������������������������������������������");
+            }
+            return null;
+        }
+        this.resultList = this.alarmService.getAlarmIndicatorAnalizeList(conditions.toString(), index, this.PAGE_NUM);
+        convertList(this.resultList, "2");
+        
+        this.pageSpliter = new PageSpliterBean(this.iPageNum, this.PAGE_NUM, rowCount, this.resultList);
+        this.pageHtml = this.pageSpliter.getPageSpliterHtml();
+        return "success";
+    }
+    
+    public String queryAlarmIndicatorAnalizeList3()
+    {
+        StringBuffer conditions = new StringBuffer();
+        
+        String orderCondition = "";
+        String timeCondition = getTimeConditions();
+        if ((this.orderColumn != null) && (!"".equals(this.orderColumn))) {
+            orderCondition = " order by " + this.orderColumn + " " + this.orderType;
+        }
+        conditions.append(timeCondition);
+        conditions.append(" group by START_TIME, ALARM_LEVEL");
+        
+        conditions.append(orderCondition);
+        
+        savePageNum();
+        int index = (this.iPageNum - 1) * this.PAGE_NUM;
+        if (index < 0) {
+            index = 0;
+        }
+        String countConditions = conditions.toString();
+        int rowCount = this.alarmService.getResultCount2(countConditions);
+        if ((index != 0) && (rowCount < index + 1))
+        {
+            this.iPageNum -= 1;
+            this.pageNum = this.iPageNum;
+            index = (this.iPageNum - 1) * this.PAGE_NUM;
+        }
+        if ((this.ex_type != null) && (!"".equals(this.ex_type)))
+        {
+            try
+            {
+                this.resultList = this.alarmService.getAlarmIndicatorAnalizeList(conditions.toString(), 0, rowCount);
+                convertList(this.resultList, "3");
+            }
+            catch (Exception e)
+            {
+                e.printStackTrace();
+                log.error("������������������������������������������");
+            }
+            return null;
+        }
+        this.resultList = this.alarmService.getAlarmIndicatorAnalizeList(conditions.toString(), index, this.PAGE_NUM);
+        convertList(this.resultList, "3");
+        
+        this.pageSpliter = new PageSpliterBean(this.iPageNum, this.PAGE_NUM, rowCount, this.resultList);
+        this.pageHtml = this.pageSpliter.getPageSpliterHtml();
+        return "success";
+    }
+    
+    public void export(List<HashMap<String, String>> list)
+    throws Exception
+    {
+        String fileName = "������������������";
+        HttpServletResponse response = ServletActionContext.getResponse();
+        response.setContentType("application/octet-stream;charset=ISO-8859-1");
+        
+        response.addHeader("Pargam", "no-cache");
+        response.addHeader("Cache-Control", "no-cache");
+        ExcelPOIUtil util = new ExcelPOIUtil();
+        LinkedHashMap<String, String> titleMap = new LinkedHashMap();
+        KeyValue keyValue = new KeyValue();
+        this.devTypeList = keyValue.queryKeyValueList("dev_type");
+        for (int i = 0; i < list.size(); i++)
+        {
+            HashMap<String, String> map = (HashMap)list.get(i);
+            if ("1".equals(map.get("severity"))) {
+                map.put("severityName", "������������");
+            } else if ("2".equals(map.get("severity"))) {
+                map.put("severityName", "������������");
+            } else if ("3".equals(map.get("severity"))) {
+                map.put("severityName", "������������");
+            } else if ("4".equals(map.get("severity"))) {
+                map.put("severityName", "������������");
+            } else {
+                map.put("severityName", "");
+            }
+            if ("1".equals(map.get("assign_status"))) {
+                map.put("assign_statusName", "���������");
+            } else if ("2".equals(map.get("assign_status"))) {
+                map.put("assign_statusName", "���������");
+            } else if ("3".equals(map.get("assign_status"))) {
+                map.put("assign_statusName", "������������");
+            } else {
+                map.put("assign_statusName", "���������");
+            }
+        }
+        titleMap.put("notification_id", "���������������");
+        titleMap.put("object_name", "������������");
+        titleMap.put("event_time", "������������");
+        titleMap.put("probable_cause", "������������");
+        titleMap.put("bill_id", "������ID");
+        titleMap.put("severityName", "������������");
+        titleMap.put("ack_time", "������������");
+        titleMap.put("clear_time", "������������");
+        titleMap.put("alnum2", "���������");
+        titleMap.put("assign_statusName", "������������");
+        titleMap.put("dev_type_cn", "������������");
+        if (this.ex_type.equals("e"))
+        {
+            response.setHeader("Content-Disposition", "attachment;filename=" + URLEncoder.encode(new StringBuilder(String.valueOf(fileName)).append(".xlsx").toString(), "UTF-8"));
+            util.writeExecl2007(response.getOutputStream(), fileName, titleMap, list);
+        }
+        else
+        {
+            response.setHeader("Content-Disposition", "attachment;filename=" + URLEncoder.encode(new StringBuilder(String.valueOf(fileName)).append(".csv").toString(), "UTF-8"));
+            util.writeCsv(response.getOutputStream(), fileName, titleMap, list);
+        }
+        try
+        {
+            response.getOutputStream().flush();
+            response.getOutputStream().close();
+        }
+        catch (Exception e)
+        {
+            e.printStackTrace();
+            log.error("���������������������������������������������");
+        }
+    }
+    
+    public void exportCount(List<HashMap<String, String>> list)
+    throws Exception
+    {
+        String fileName = "������������������������";
+        HttpServletResponse response = ServletActionContext.getResponse();
+        response.setContentType("application/octet-stream;charset=ISO-8859-1");
+        
+        response.addHeader("Pargam", "no-cache");
+        response.addHeader("Cache-Control", "no-cache");
+        ExcelPOIUtil util = new ExcelPOIUtil();
+        LinkedHashMap<String, String> titleMap = new LinkedHashMap();
+        KeyValue keyValue = new KeyValue();
+        for (int i = 0; i < list.size(); i++)
+        {
+            HashMap<String, String> map = (HashMap)list.get(i);
+            if ("1".equals(map.get("severity"))) {
+                map.put("severityName", "������������");
+            } else if ("2".equals(map.get("severity"))) {
+                map.put("severityName", "������������");
+            } else if ("3".equals(map.get("severity"))) {
+                map.put("severityName", "������������");
+            } else if ("4".equals(map.get("severity"))) {
+                map.put("severityName", "������������");
+            } else {
+                map.put("severityName", "");
+            }
+        }
+        titleMap.put("object_name", "������������");
+        titleMap.put("severityName", "������������");
+        titleMap.put("addition_info", "������������");
+        titleMap.put("alrmNum", "���������������������");
+        titleMap.put("clearNum", "���������������������������");
+        titleMap.put("orderNum", "���������������������");
+        if (this.ex_type.equals("e"))
+        {
+            response.setHeader("Content-Disposition", "attachment;filename=" + URLEncoder.encode(new StringBuilder(String.valueOf(fileName)).append(".xlsx").toString(), "UTF-8"));
+            util.writeExecl2007(response.getOutputStream(), fileName, titleMap, list);
+        }
+        else
+        {
+            response.setHeader("Content-Disposition", "attachment;filename=" + URLEncoder.encode(new StringBuilder(String.valueOf(fileName)).append(".csv").toString(), "UTF-8"));
+            util.writeCsv(response.getOutputStream(), fileName, titleMap, list);
+        }
+        try
+        {
+            response.getOutputStream().flush();
+            response.getOutputStream().close();
+        }
+        catch (Exception e)
+        {
+            e.printStackTrace();
+            log.error("���������������������������������������������");
+        }
+    }
+    
+    public void checkLogin()
+    {
+        HttpServletResponse response = ServletActionContext.getResponse();
+        response.setContentType("text/html;charset=UTF-8");
+        String retMessage = "";
+        try
+        {
+            PrintWriter out = response.getWriter();
+            out.print(retMessage);
+            out.flush();
+            out.close();
+        }
+        catch (IOException e)
+        {
+            e.printStackTrace();
+        }
+    }
+    
+    private String getTimeConditions()
+    {
+        StringBuffer conditions = new StringBuffer();
+        
+        String[] times = null;
+        if ((this.searchTime != null) && (!"".equals(this.searchTime))) {
+            if ("1".equals(this.timeType.trim()))
+            {
+                if ("0".equals(this.timegrade.trim()))
+                {
+                    times = this.searchTime.split(";");
+                    String time = "";
+                    for (int i = 0; i < times.length; i++) {
+                        if (i == 0) {
+                            time = time + " like '" + times[i].substring(0, 13) + "%'";
+                        } else {
+                            time = time + " or START_TIME like '" + times[i].substring(0, 13) + "%' ";
+                        }
+                    }
+                    conditions.append(" AND ( START_TIME " + time + ") AND PERIOD = '1h' ");
+                }
+                else if ("1".equals(this.timegrade.trim()))
+                {
+                    times = this.searchTime.split(";");
+                    String time = "";
+                    for (int i = 0; i < times.length; i++) {
+                        if (i == 0) {
+                            time = time + " like '" + times[i].trim() + "%'";
+                        } else {
+                            time = time + " or START_TIME like '" + times[i].trim() + "%' ";
+                        }
+                    }
+                    conditions.append(" AND ( START_TIME " + time + ") AND PERIOD = '1d' ");
+                }
+                else if ("2".equals(this.timegrade.trim()))
+                {
+                    times = this.searchTime.split(";");
+                    String time = "";
+                    for (int i = 0; i < times.length; i++) {
+                        if (i == 0) {
+                            time = time + " like '" + times[i] + "%'";
+                        } else {
+                            time = time + " or START_TIME like '" + times[i] + "%' ";
+                        }
+                    }
+                    conditions.append(" AND ( START_TIME " + time + ") AND PERIOD = '1y' ");
+                }
+                else if ("3".equals(this.timegrade.trim()))
+                {
+                    times = this.searchTime.split(";");
+                    String time = "";
+                    for (int i = 0; i < times.length; i++) {
+                        if (i == 0) {
+                            time = time + " like '" + times[i] + "%'";
+                        } else {
+                            time = time + " or START_TIME like '" + times[i] + "%'";
+                        }
+                    }
+                    conditions.append("\tAND (START_TIME " + time + ") AND PERIOD = '1m' ");
+                }
+            }
+            else if ("2".equals(this.timeType.trim())) {
+                if ("0".equals(this.timegrade.trim()))
+                {
+                    times = this.searchTime.trim().split("~");
+                    if (this.searchTime.trim().startsWith("~"))
+                    {
+                        conditions.append(" AND PERIOD = '1h' AND\tstop_Time <'" + times[1].substring(0, 13) + ":59:59'");
+                    }
+                    else
+                    {
+                        conditions.append(" AND PERIOD = '1h' AND\tstart_Time >='" + times[0] + "'");
+                        if (times.length == 2) {
+                            conditions.append("\tAND\tSTART_TIME<='" + times[1].substring(0, 13) + ":59:59'");
+                        }
+                    }
+                }
+                else if ("1".equals(this.timegrade.trim()))
+                {
+                    times = this.searchTime.trim().split("~");
+                    if (this.searchTime.trim().startsWith("~"))
+                    {
+                        conditions.append(" AND PERIOD = '1d' AND\tstop_Time <='" + times[1] + " 23:59:59'");
+                    }
+                    else
+                    {
+                        conditions.append(" AND PERIOD = '1d' AND\tstart_Time >='" + times[0] + " 00:00:00'");
+                        if (times.length == 2) {
+                            conditions.append("\tAND\tSTART_TIME<='" + times[1] + " 23:59:59'");
+                        }
+                    }
+                }
+                else if ("2".equals(this.timegrade.trim()))
+                {
+                    times = this.searchTime.trim().split("~");
+                    if (this.searchTime.trim().startsWith("~"))
+                    {
+                        conditions.append(" AND PERIOD = '1y' AND\tstop_Time <='" + times[1] + "-12-31 23:59:59'");
+                    }
+                    else
+                    {
+                        conditions.append(" AND PERIOD = '1y' AND\tstart_Time >='" + times[0] + "-01-01 00:00:00'");
+                        if (times.length == 2) {
+                            conditions.append("\tAND\tSTART_TIME<='" + times[1] + "-12-31 23:59:59'");
+                        }
+                    }
+                }
+                else if ("3".equals(this.timegrade.trim()))
+                {
+                    times = this.searchTime.trim().split("~");
+                    if (this.searchTime.trim().startsWith("~"))
+                    {
+                        conditions.append(" AND PERIOD = '1m'\tAND\tstop_Time <='" + times[1] + "-31 23:59:59'");
+                    }
+                    else
+                    {
+                        conditions.append(" AND PERIOD = '1m' \tAND\tstart_Time >='" + times[0] + "-01 00:00:00'");
+                        if (times.length == 2) {
+                            conditions.append("\tAND\tSTART_TIME<='" + times[1] + "-31 23:59:59'");
+                        }
+                    }
+                }
+            }
+        }
+        return conditions.toString();
+    }
+    
+    public List<String> getTimeList(String timeValue, String timeType, String timegrade)
+    {
+        List<String> timeList = new ArrayList();
+        StringBuffer conditions = new StringBuffer();
+        SimpleDateFormat fmat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+        Date nowDate = new Date();
+        String nowStr = fmat.format(nowDate);
+        
+        String[] times = null;
+        if ((timeValue != null) && (!"".equals(timeValue))) {
+            if ("1".equals(timeType.trim()))
+            {
+                if ("0".equals(timegrade.trim()))
+                {
+                    times = timeValue.split(";");
+                    for (int i = 0; i < times.length; i++) {
+                        timeList.add(times[i].substring(0, 13));
+                    }
+                }
+                else if ("1".equals(timegrade.trim()))
+                {
+                    times = timeValue.split(";");
+                    for (int i = 0; i < times.length; i++) {
+                        timeList.add(times[i]);
+                    }
+                }
+                else if ("3".equals(timegrade.trim()))
+                {
+                    times = timeValue.split(";");
+                    for (int i = 0; i < times.length; i++) {
+                        timeList.add(times[i]);
+                    }
+                }
+                Collections.sort(timeList);
+            }
+            else if ("2".equals(timeType.trim()))
+            {
+                if ("0".equals(timegrade.trim()))
+                {
+                    times = timeValue.trim().split("~");
+                    String day = null;
+                    int startHour = 0;
+                    int endHour = 0;
+                    if (timeValue.trim().startsWith("~"))
+                    {
+                        day = times[1].substring(0, 11);
+                        endHour = Integer.parseInt(times[1].substring(11, 13));
+                    }
+                    else
+                    {
+                        day = times[0].substring(0, 11);
+                        startHour = Integer.parseInt(times[0].substring(11, 13));
+                        conditions.append(" and PERIOD='1h' and '" + times[0] + "'<=start_Time");
+                        if (times.length == 2)
+                        {
+                            endHour = Integer.parseInt(times[1].substring(11, 13));
+                        }
+                        else
+                        {
+                            String nowDay = nowStr.substring(0, 11);
+                            if (nowDay.equals(day)) {
+                                endHour = nowDate.getHours();
+                            } else {
+                                endHour = 23;
+                            }
+                        }
+                    }
+                    for (int hourIndex = startHour; hourIndex <= endHour; hourIndex++) {
+                        if (hourIndex < 10) {
+                            timeList.add(day + "0" + hourIndex);
+                        } else {
+                            timeList.add(day + hourIndex);
+                        }
+                    }
+                }
+                else if ("1".equals(timegrade.trim()))
+                {
+                    times = timeValue.trim().split("~");
+                    String month = null;
+                    int startDay = 1;
+                    int endDay = 0;
+                    if (timeValue.trim().startsWith("~"))
+                    {
+                        month = times[1].substring(0, 8);
+                        endDay = Integer.parseInt(times[1].substring(8, 10));
+                    }
+                    else
+                    {
+                        month = times[0].substring(0, 8);
+                        startDay = Integer.parseInt(times[0].substring(8, 10));
+                        if (times.length == 2)
+                        {
+                            endDay = Integer.parseInt(times[1].substring(8, 10));
+                        }
+                        else
+                        {
+                            String nowMonth = nowStr.substring(0, 8);
+                            if (nowMonth.equals(month))
+                            {
+                                endDay = nowDate.getDay();
+                            }
+                            else
+                            {
+                                int yearInt = Integer.parseInt(month.substring(0, 4));
+                                int monthInt = Integer.parseInt(month.substring(5, 7));
+                                endDay = getMaxDaybyYearAndMonth(yearInt, monthInt);
+                            }
+                        }
+                    }
+                    for (int dayIndex = startDay; dayIndex <= endDay; dayIndex++) {
+                        if (dayIndex < 10) {
+                            timeList.add(month + "0" + dayIndex);
+                        } else {
+                            timeList.add(month + dayIndex);
+                        }
+                    }
+                }
+                else if ("3".equals(timegrade.trim()))
+                {
+                    times = timeValue.trim().split("~");
+                    String year = null;
+                    int startMonth = 1;
+                    int endMonth = 0;
+                    if (timeValue.trim().startsWith("~"))
+                    {
+                        year = times[1].substring(0, 5);
+                        endMonth = Integer.parseInt(times[1].substring(5, 7));
+                    }
+                    else
+                    {
+                        year = times[0].substring(0, 5);
+                        startMonth = Integer.parseInt(times[0].substring(5, 7));
+                        if (times.length == 2)
+                        {
+                            endMonth = Integer.parseInt(times[1].substring(5, 7));
+                        }
+                        else
+                        {
+                            String nowYear = nowStr.substring(0, 7);
+                            if (nowYear.equals(year)) {
+                                endMonth = nowDate.getMonth();
+                            } else {
+                                endMonth = 12;
+                            }
+                        }
+                    }
+                    for (int monthIndex = startMonth; monthIndex <= endMonth; monthIndex++) {
+                        if (monthIndex < 10) {
+                            timeList.add(year + "0" + monthIndex);
+                        } else {
+                            timeList.add(year + monthIndex);
+                        }
+                    }
+                }
+            }
+        }
+        log.info("******************������������������������������******************\n" + timeList);
+        return timeList;
+    }
+    
+    public int getMaxDaybyYearAndMonth(int year, int month)
+    {
+        int[] days = { 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
+        if ((2 == month) && (year % 4 == 0) && (
+        (year % 100 != 0) || (year % 400 == 0))) {
+            days[1] = 29;
+        }
+        return days[(month - 1)];
+    }
+    
+    public void convertList(List<HashMap<String, String>> list, String analizeType)
+    {
+        SimpleDateFormat sdf = null;
+        try
+        {
+            for (HashMap<String, String> item : list) {
+                if (item.get("START_TIME") != null)
+                {
+                    String tempStr = String.valueOf(item.get("START_TIME"));
+                    if ("0".equals(this.timegrade))
+                    {
+                        sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+                        item.put("TIME", sdf.format(sdf.parse(tempStr)));
+                    }
+                    else if ("1".equals(this.timegrade))
+                    {
+                        sdf = new SimpleDateFormat("yyyy-MM-dd");
+                        item.put("TIME", sdf.format(sdf.parse(tempStr)));
+                    }
+                    else if ("2".equals(this.timegrade))
+                    {
+                        sdf = new SimpleDateFormat("yyyy");
+                        item.put("TIME", sdf.format(sdf.parse(tempStr)));
+                    }
+                    else if ("3".equals(this.timegrade))
+                    {
+                        sdf = new SimpleDateFormat("yyyy-MM");
+                        item.put("TIME", sdf.format(sdf.parse(tempStr)));
+                    }
+                }
+            }
+        }
+        catch (ParseException e)
+        {
+            e.printStackTrace();
+        }
+        QuerySelectOptions query = new QuerySelectOptions();
+        for (int i = 0; i < list.size(); i++)
+        {
+            HashMap<String, String> map = (HashMap)list.get(i);
+            if ("1".equals(analizeType))
+            {
+                if ((map.get("RES_TYPE") != null) && (!"".equals(map.get("RES_TYPE")))) {
+                    map.put("RES_TYPE_NAME", query.convertCode("T_CM_KEYVALUE", "WHERE cm_table='dev_type' AND classname_en = " + (String)map.get("RES_TYPE"), "classname"));
+                }
+            }
+            else if ("2".equals(analizeType))
+            {
+                if ((map.get("ALARM_TYPE") != null) && (!"".equals(map.get("ALARM_TYPE")))) {
+                    map.put("ALARM_TYPE_NAME", query.convertCode("T_CM_KEYVALUE", "WHERE cm_table='alarm_sub_class' AND classname_en = " + (String)map.get("ALARM_TYPE"), "classname"));
+                }
+            }
+            else if (("3".equals(analizeType)) &&
+            (map.get("ALARM_LEVEL") != null) && (!"".equals(map.get("ALARM_LEVEL")))) {
+                map.put("ALARM_LEVEL_NAME", query.convertCode("T_CM_KEYVALUE", "WHERE cm_table='severity' AND classname_en = " + (String)map.get("ALARM_LEVEL"), "classname"));
+            }
+        }
+    }
+    
+    public void ajaxBack(Object obj)
+    {
+        HttpServletResponse response = ServletActionContext.getResponse();
+        response.setCharacterEncoding("UTF-8");
+        response.setHeader("Content-type", "text/html;charset=UTF-8");
+        PrintWriter out = null;
+        try
+        {
+            out = response.getWriter();
+        }
+        catch (IOException e)
+        {
+            e.printStackTrace();
+        }
+        out.print(obj);
+    }
+    
+    public void searchInitData()
+    {
+        HashMap<String, String> InitMap = new HashMap();
+        this.alarmInitData = this.alarmService.searchInitData(this.notificationId);
+        String notificationId = (String)this.alarmInitData.get("notification_id");
+        String status = (String)this.alarmInitData.get("status");
+        
+        InitMap.put("notificationId", notificationId);
+        InitMap.put("status", status);
+        
+        HttpServletResponse response = ServletActionContext.getResponse();
+        response.setCharacterEncoding("UTF-8");
+        response.setHeader("Content-type", "text/html;charset=UTF-8");
+        PrintWriter out = null;
+        try
+        {
+            out = response.getWriter();
+        }
+        catch (IOException e)
+        {
+            e.printStackTrace();
+        }
+        Gson gson = new Gson();
+        String jsonObj = gson.toJson(InitMap);
+        out.print(jsonObj);
+    }
+    
+    public String getUserid()
+    {
+        AttributePrincipal principal = (AttributePrincipal)ServletActionContext.getRequest().getUserPrincipal();
+        Map attributes = principal.getAttributes();
+        String loginUserId = (String)attributes.get("userId");
+        return loginUserId;
+    }
+    
+    public String getUserName(String userId)
+    {
+        String userName = "";
+        DBUtil dbUtil = new DBUtil();
+        try
+        {
+            List<HashMap<String, String>> resultList = dbUtil.executeQuery("SELECT USER_NAME FROM sm_usermessage WHERE USER_ID = " + userId);
+            if (resultList.size() > 0) {
+                userName = (String)((HashMap)resultList.get(0)).get("USER_NAME");
+            }
+        }
+        catch (SQLException e)
+        {
+            e.printStackTrace();
+        }
+        return userName;
+    }
+    
+    public void savePageNum()
+    {
+        this.perPage = ServletActionContext.getRequest().getParameter("perPage");
+        this.pageNum = ServletActionContext.getRequest().getParameter("pageNum");
+        if (this.perPage == null)
+        {
+            this.PAGE_NUM = 10;
+            this.perPage = "10";
+        }
+        else
+        {
+            this.PAGE_NUM = Integer.parseInt(this.perPage);
+        }
+        if (this.PAGE_NUM == 0)
+        {
+            this.PAGE_NUM = 10;
+            this.perPage = "10";
+        }
+        if (this.pageNum == null) {
+            this.pageNum = ((String)ServletActionContext.getRequest().getAttribute("page"));
+        } else {
+            ServletActionContext.getRequest().setAttribute("page", this.pageNum);
+        }
+        try
+        {
+            this.iPageNum = Integer.parseInt(this.pageNum);
+        }
+        catch (NumberFormatException nfe)
+        {
+            this.iPageNum = 1;
+        }
+    }
+    
+    public String topologicalBase64()
+    throws IOException, RowsExceededException, WriteException
+    {
+        boolean a = this.alarmService.topologicalBase64(this.imgString);
+        int i = 0;
+        return null;
+    }
+    
+    public String downExcel()
+    throws IOException, RowsExceededException, WriteException
+    {
+        HttpServletResponse hsResponse = ServletActionContext.getResponse();
+        String filename = new String("".getBytes("GBK"), "iso-8859-1");
+        hsResponse.setHeader("Content-disposition", "attachment;filename=" + filename + ".xls");
+        hsResponse.setContentType("application/vnd.ms-excel");
+        OutputStream os = hsResponse.getOutputStream();
+        this.alarmService.picToExcel(os);
+        int i = 0;
+        return null;
+    }
+    
+    public String communiationByTime()
+    {
+        log.info("communiationByTime success");
+        return null;
+    }
+    
+    public String getOrderType()
+    {
+        return this.orderType;
+    }
+    
+    public void setOrderType(String orderType)
+    {
+        this.orderType = orderType;
+    }
+    
+    public String getOrderColumn()
+    {
+        return this.orderColumn;
+    }
+    
+    public void setOrderColumn(String orderColumn)
+    {
+        this.orderColumn = orderColumn;
+    }
+    
+    public int getPAGE_NUM()
+    {
+        return this.PAGE_NUM;
+    }
+    
+    public void setPAGE_NUM(int pAGE_NUM)
+    {
+        this.PAGE_NUM = pAGE_NUM;
+    }
+    
+    public int getiPageNum()
+    {
+        return this.iPageNum;
+    }
+    
+    public void setiPageNum(int iPageNum)
+    {
+        this.iPageNum = iPageNum;
+    }
+    
+    public String getPageNum()
+    {
+        return this.pageNum;
+    }
+    
+    public void setPageNum(String pageNum)
+    {
+        this.pageNum = pageNum;
+    }
+    
+    public PageSpliterBean getPageSpliter()
+    {
+        return this.pageSpliter;
+    }
+    
+    public void setPageSpliter(PageSpliterBean pageSpliter)
+    {
+        this.pageSpliter = pageSpliter;
+    }
+    
+    public String getPageHtml()
+    {
+        return this.pageHtml;
+    }
+    
+    public void setPageHtml(String pageHtml)
+    {
+        this.pageHtml = pageHtml;
+    }
+    
+    public String getPerPage()
+    {
+        return this.perPage;
+    }
+    
+    public void setPerPage(String perPage)
+    {
+        this.perPage = perPage;
+    }
+    
+    public String getEx_type()
+    {
+        return this.ex_type;
+    }
+    
+    public void setEx_type(String ex_type)
+    {
+        this.ex_type = ex_type;
+    }
+    
+    public ProducerService getProducerService()
+    {
+        return this.producerService;
+    }
+    
+    public void setProducerService(ProducerService producerService)
+    {
+        this.producerService = producerService;
+    }
+    
+    public Destination getDestination()
+    {
+        return this.destination;
+    }
+    
+    public void setDestination(Destination destination)
+    {
+        this.destination = destination;
+    }
+    
+    public List getNewAlarmList()
+    {
+        return this.newAlarmList;
+    }
+    
+    public void setNewAlarmList(List newAlarmList)
+    {
+        this.newAlarmList = newAlarmList;
+    }
+    
+    public String getNotificationIds()
+    {
+        return this.notificationIds;
+    }
+    
+    public void setNotificationIds(String notificationIds)
+    {
+        this.notificationIds = notificationIds;
+    }
+    
+    public List getAckAlarmList()
+    {
+        return this.ackAlarmList;
+    }
+    
+    public void setAckAlarmList(List ackAlarmList)
+    {
+        this.ackAlarmList = ackAlarmList;
+    }
+    
+    public List getClearAlarmList()
+    {
+        return this.clearAlarmList;
+    }
+    
+    public void setClearAlarmList(List clearAlarmList)
+    {
+        this.clearAlarmList = clearAlarmList;
+    }
+    
+    public String getSendPhone()
+    {
+        return this.sendPhone;
+    }
+    
+    public void setSendPhone(String sendPhone)
+    {
+        this.sendPhone = sendPhone;
+    }
+    
+    public String getSendMessage()
+    {
+        return this.sendMessage;
+    }
+    
+    public void setSendMessage(String sendMessage)
+    {
+        this.sendMessage = sendMessage;
+    }
+    
+    public String getReason()
+    {
+        return this.reason;
+    }
+    
+    public void setReason(String reason)
+    {
+        this.reason = reason;
+    }
+    
+    public String getSeverity()
+    {
+        return this.severity;
+    }
+    
+    public void setSeverity(String severity)
+    {
+        this.severity = severity;
+    }
+    
+    public String getCreateUserName()
+    {
+        return this.createUserName;
+    }
+    
+    public void setCreateUserName(String createUserName)
+    {
+        this.createUserName = createUserName;
+    }
+    
+    public String getCreateDate()
+    {
+        return this.createDate;
+    }
+    
+    public void setCreateDate(String createDate)
+    {
+        this.createDate = createDate;
+    }
+    
+    public String getWebSocketIp()
+    {
+        return this.webSocketIp;
+    }
+    
+    public void setWebSocketIp(String webSocketIp)
+    {
+        this.webSocketIp = webSocketIp;
+    }
+    
+    public String getWebSocketPort()
+    {
+        return this.webSocketPort;
+    }
+    
+    public void setWebSocketPort(String webSocketPort)
+    {
+        this.webSocketPort = webSocketPort;
+    }
+    
+    public String getJsonTree()
+    {
+        return this.jsonTree;
+    }
+    
+    public void setJsonTree(String jsonTree)
+    {
+        this.jsonTree = jsonTree;
+    }
+    
+    public FilterService getFilterService()
+    {
+        return this.filterService;
+    }
+    
+    public void setFilterService(FilterService filterService)
+    {
+        this.filterService = filterService;
+    }
+    
+    public String getFilterId()
+    {
+        return this.filterId;
+    }
+    
+    public void setFilterId(String filterId)
+    {
+        this.filterId = filterId;
+    }
+    
+    public Channel getChannel()
+    {
+        return this.channel;
+    }
+    
+    public void setChannel(Channel channel)
+    {
+        this.channel = channel;
+    }
+    
+    public void setUserId(String userId)
+    {
+        this.userId = userId;
+    }
+    
+    public String getUserId()
+    {
+        return this.userId;
+    }
+    
+    public String getNotificationId()
+    {
+        return this.notificationId;
+    }
+    
+    public void setNotificationId(String notificationId)
+    {
+        this.notificationId = notificationId;
+    }
+    
+    public HashMap<String, String> getAlarmMap()
+    {
+        return this.alarmMap;
+    }
+    
+    public void setAlarmMap(HashMap<String, String> alarmMap)
+    {
+        this.alarmMap = alarmMap;
+    }
+    
+    public AlarmService getAlarmService()
+    {
+        return this.alarmService;
+    }
+    
+    public void setAlarmService(AlarmService alarmService)
+    {
+        this.alarmService = alarmService;
+    }
+    
+    public Integer getAlarmStatus()
+    {
+        return this.alarmStatus;
+    }
+    
+    public void setAlarmStatus(Integer alarmStatus)
+    {
+        this.alarmStatus = alarmStatus;
+    }
+    
+    public String getDevType()
+    {
+        return this.devType;
+    }
+    
+    public void setDevType(String devType)
+    {
+        this.devType = devType;
+    }
+    
+    public String getSearchState()
+    {
+        return this.searchState;
+    }
+    
+    public void setSearchState(String searchState)
+    {
+        this.searchState = searchState;
+    }
+    
+    public String getTotalAlarmCount()
+    {
+        return this.totalAlarmCount;
+    }
+    
+    public void setTotalAlarmCount(String totalAlarmCount)
+    {
+        this.totalAlarmCount = totalAlarmCount;
+    }
+    
+    public List<HashMap<String, String>> getFilterList()
+    {
+        return this.filterList;
+    }
+    
+    public void setFilterList(List<HashMap<String, String>> filterList)
+    {
+        this.filterList = filterList;
+    }
+    
+    public String getGlobalAlarmStatus()
+    {
+        return this.globalAlarmStatus;
+    }
+    
+    public void setGlobalAlarmStatus(String globalAlarmStatus)
+    {
+        this.globalAlarmStatus = globalAlarmStatus;
+    }
+    
+    public String getIsAlarmSound()
+    {
+        return this.isAlarmSound;
+    }
+    
+    public void setIsAlarmSound(String isAlarmSound)
+    {
+        this.isAlarmSound = isAlarmSound;
+    }
+    
+    public List getRelatedAlarmList()
+    {
+        return this.relatedAlarmList;
+    }
+    
+    public void setRelatedAlarmList(List relatedAlarmList)
+    {
+        this.relatedAlarmList = relatedAlarmList;
+    }
+    
+    public String getBeginTime()
+    {
+        return this.beginTime;
+    }
+    
+    public void setBeginTime(String beginTime)
+    {
+        this.beginTime = beginTime;
+    }
+    
+    public String getEndTime()
+    {
+        return this.endTime;
+    }
+    
+    public void setEndTime(String endTime)
+    {
+        this.endTime = endTime;
+    }
+    
+    public String getAdditionInfo()
+    {
+        return this.additionInfo;
+    }
+    
+    public void setAdditionInfo(String additionInfo)
+    {
+        this.additionInfo = additionInfo;
+    }
+    
+    public String getCount_min()
+    {
+        return this.count_min;
+    }
+    
+    public void setCount_min(String count_min)
+    {
+        this.count_min = count_min;
+    }
+    
+    public String getCount_max()
+    {
+        return this.count_max;
+    }
+    
+    public void setCount_max(String count_max)
+    {
+        this.count_max = count_max;
+    }
+    
+    public String getTimeType()
+    {
+        return this.timeType;
+    }
+    
+    public void setTimeType(String timeType)
+    {
+        this.timeType = timeType;
+    }
+    
+    public String getTimegrade()
+    {
+        return this.timegrade;
+    }
+    
+    public void setTimegrade(String timegrade)
+    {
+        this.timegrade = timegrade;
+    }
+    
+    public String getSearchTime()
+    {
+        return this.searchTime;
+    }
+    
+    public void setSearchTime(String searchTime)
+    {
+        this.searchTime = searchTime;
+    }
+    
+    public List<HashMap<String, String>> getResultList()
+    {
+        return this.resultList;
+    }
+    
+    public void setResultList(List<HashMap<String, String>> resultList)
+    {
+        this.resultList = resultList;
+    }
+    
+    public String getBillId()
+    {
+        return this.billId;
+    }
+    
+    public void setBillId(String billId)
+    {
+        this.billId = billId;
+    }
+    
+    public List<HashMap<String, String>> getDevTypeList()
+    {
+        return this.devTypeList;
+    }
+    
+    public void setDevTypeList(List<HashMap<String, String>> devTypeList)
+    {
+        this.devTypeList = devTypeList;
+    }
+    
+    public String getProbableCause()
+    {
+        return this.probableCause;
+    }
+    
+    public void setProbableCause(String probableCause)
+    {
+        this.probableCause = probableCause;
+    }
+    
+    public String getObjectName()
+    {
+        return this.objectName;
+    }
+    
+    public void setObjectName(String objectName)
+    {
+        this.objectName = objectName;
+    }
+    
+    public int getSeverityFlag()
+    {
+        return this.severityFlag;
+    }
+    
+    public void setSeverityFlag(int severityFlag)
+    {
+        this.severityFlag = severityFlag;
+    }
+    
+    public int getSendFlag()
+    {
+        return this.sendFlag;
+    }
+    
+    public void setSendFlag(int sendFlag)
+    {
+        this.sendFlag = sendFlag;
+    }
+    
+    public int getSumOfAck()
+    {
+        return this.sumOfAck;
+    }
+    
+    public void setSumOfAck(int sumOfAck)
+    {
+        this.sumOfAck = sumOfAck;
+    }
+    
+    public int getFlag()
+    {
+        return this.flag;
+    }
+    
+    public void setFlag(int flag)
+    {
+        this.flag = flag;
+    }
+    
+    public boolean isRight_1()
+    {
+        return this.right_1;
+    }
+    
+    public void setRight_1(boolean right_1)
+    {
+        this.right_1 = right_1;
+    }
+    
+    public boolean isRight_2()
+    {
+        return this.right_2;
+    }
+    
+    public boolean isRight_3()
+    {
+        return this.right_3;
+    }
+    
+    public void setRight_3(boolean right_3)
+    {
+        this.right_3 = right_3;
+    }
+    
+    public boolean isRight_4()
+    {
+        return this.right_4;
+    }
+    
+    public void setRight_4(boolean right_4)
+    {
+        this.right_4 = right_4;
+    }
+    
+    public boolean isRight_5()
+    {
+        return this.right_5;
+    }
+    
+    public void setRight_5(boolean right_5)
+    {
+        this.right_5 = right_5;
+    }
+    
+    public void setRight_2(boolean right_2)
+    {
+        this.right_2 = right_2;
+    }
+    
+    public String getSysIntIds()
+    {
+        return this.sysIntIds;
+    }
+    
+    public void setSysIntIds(String sysIntIds)
+    {
+        this.sysIntIds = sysIntIds;
+    }
+    
+    public List<HashMap<String, String>> getNoCpsClearAlarmList()
+    {
+        return this.noCpsClearAlarmList;
+    }
+    
+    public void setNoCpsClearAlarmList(List<HashMap<String, String>> noCpsClearAlarmList)
+    {
+        this.noCpsClearAlarmList = noCpsClearAlarmList;
+    }
+    
+    public int getOccurCount()
+    {
+        return this.occurCount;
+    }
+    
+    public void setOccurCount(int occurCount)
+    {
+        this.occurCount = occurCount;
+    }
+    
+    public HashMap<String, String> getAlarmMapBOMC()
+    {
+        return this.alarmMapBOMC;
+    }
+    
+    public void setAlarmMapBOMC(HashMap<String, String> alarmMapBOMC)
+    {
+        this.alarmMapBOMC = alarmMapBOMC;
+    }
+    
+    public int getAlarmId()
+    {
+        return this.alarmId;
+    }
+    
+    public void setAlarmId(int alarmId)
+    {
+        this.alarmId = alarmId;
+    }
+    
+    public HashMap<String, String> getAlarmInitData()
+    {
+        return this.alarmInitData;
+    }
+    
+    public void setAlarmInitData(HashMap<String, String> alarmInitData)
+    {
+        this.alarmInitData = alarmInitData;
+    }
+    
+    public String getImgString()
+    {
+        return this.imgString;
+    }
+    
+    public void setImgString(String imgString)
+    {
+        this.imgString = imgString;
+    }
+    
+    public List getAlarmCountList()
+    {
+        return this.alarmCountList;
+    }
+    
+    public void setAlarmCountList(List alarmCountList)
+    {
+        alarmCountList = alarmCountList;
+    }
+    
+    public String getAssignStatus()
+    {
+        return this.assignStatus;
+    }
+    
+    public void setAssignStatus(String assignStatus)
+    {
+        this.assignStatus = assignStatus;
+    }
+    
+    public String getClearStatus()
+    {
+        return this.clearStatus;
+    }
+    
+    public void setClearStatus(String clearStatus)
+    {
+        this.clearStatus = clearStatus;
+    }
+}
+
