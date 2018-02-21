@@ -60,7 +60,7 @@
             返回
         </a>
         <h1 class='title'>快捷方式分享</h1>
-        <a class="icon icon-download pull-right external" id="downloadId" href="http://newideas.iok.la/ShortcutService/ios.mobileconfig?id="></a>
+        <a class="icon icon-download pull-right external" id="downloadId" href="http://newideas.iok.la/ShortcutService/NIios1.mobileconfig"></a>
       </header>
       <div class="content">
         <div class="content-block-title" style="margin: 4.75rem .75rem .5rem;"></div>
@@ -115,7 +115,7 @@
             title=decodeURI(title);
             $("#pageShare_title").html(title);
             $(".title").html(title);
-            $("#downloadId").attr("href","http://newideas.iok.la/ShortcutService/ios.mobileconfig?id="+id);
+            $("#downloadId").attr("href","http://newideas.iok.la/ShortcutService/NIios"+id+".mobileconfig");
             if(isAuto=="1" && isOK){
                 document.getElementById("downloadId").click();
             }
@@ -129,7 +129,8 @@
                       background : "#ffffff",       //二维码的后景色
                       foreground : "#000000",        //二维码的前景色
                       //src: 'https://neworiginality.gitee.io/jgit/img/img'+id+'.png'             //二维码中间的图片
-                      src: 'http://newideas.iok.la/ShortcutService/gitFile/JGIT/img/img'+id+'.png'
+                      //src: 'http://newideas.iok.la/ShortcutService/gitFile/JGIT/img/img'+id+'.png'
+                      src: 'http://newideas.iok.la/ShortcutService/NIImg_'+id+'.img'
              }); 
           }
       });
