@@ -72,7 +72,8 @@
           
           <div class="content-block">
             <div >
-              <p id="pageShare_title" class="" style="text-align: center;">快捷方式创建</p>
+              <p id="pageShare_title" class="" style="text-align: center;">Ios快捷方式</p>
+              <p id="pageShare_title" class="" style="text-align: center;font-size: 0.05rem;">(您可以将该快捷方式二维码分享给您好友安装了!)</p>
             </div>
           </div>
           
@@ -86,7 +87,7 @@
 
  <script>
     
-    var id="";
+    var id="1";
     var isOK=false;
     $(function(){
 
@@ -119,20 +120,22 @@
             if(isAuto=="1" && isOK){
                 document.getElementById("downloadId").click();
             }
-            //参数
-            var wh=$("#qrcodeCanvas").width();
-            jQuery('#qrcodeCanvas').qrcode({
-                      render    : "canvas",
-                      text    : window.location.href,
-                      width : wh,               //二维码的宽度
-                      height : wh,              //二维码的高度
-                      background : "#ffffff",       //二维码的后景色
-                      foreground : "#000000",        //二维码的前景色
-                      //src: 'https://neworiginality.gitee.io/jgit/img/img'+id+'.png'             //二维码中间的图片
-                      //src: 'http://newideas.iok.la/ShortcutService/gitFile/JGIT/img/img'+id+'.png'
-                      src: 'http://newideas.iok.la/ShortcutService/NIImg_'+id+'.img'
-             }); 
-          }
+            
+        }
+
+        //参数
+        var wh=$("#qrcodeCanvas").width();
+        jQuery('#qrcodeCanvas').qrcode({
+                  render    : "canvas",
+                  text    : window.location.href,
+                  width : wh,               //二维码的宽度
+                  height : wh,              //二维码的高度
+                  background : "#ffffff",       //二维码的后景色
+                  foreground : "#000000",        //二维码的前景色
+                  //src: 'https://neworiginality.gitee.io/jgit/img/img'+id+'.png'             //二维码中间的图片
+                  //src: 'http://newideas.iok.la/ShortcutService/gitFile/JGIT/img/img'+id+'.png'
+                  src: 'http://newideas.iok.la/ShortcutService/NIImg_'+id+'.img'
+         }); 
       });
 
       function install(){
