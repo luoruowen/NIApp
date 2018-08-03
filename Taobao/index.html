@@ -54,7 +54,7 @@ xIUkaK3qdPSfIuKiMLO4qp8fHkSVguaR/jDe7vGQTiFXSbxIfk++3yECAwEAAQ==
       var time=getDateWithDF(new Date(),0,'yyyy/MM/dd');
       resetTimeInput('time', time,'yyyy/mm/dd');
 
-      var key=$("#privkey").val(); 
+      var key=$("#pubkey").val(); 
 
       function createQrcode(){
 
@@ -70,7 +70,7 @@ xIUkaK3qdPSfIuKiMLO4qp8fHkSVguaR/jDe7vGQTiFXSbxIfk++3yECAwEAAQ==
           var encrypted = encrypt.encrypt(timeStr);
 
           // var decrypt = new JSEncrypt({default_key_size: 512});
-          // decrypt.setPrivateKey(key);
+          // decrypt.setPrivateKey($("#privkey").val());
           // var uncrypted = decrypt.decrypt(encrypted);
           // var time2=new Date(uncrypted+" 23:59:00");
 
