@@ -18,3 +18,5 @@ BOMC 测试 : https://luoruowen.github.io/NIApp/BOMC/index.html
 ipatest  :https://luoruowen.github.io/NIApp/ipatest/index.html
 
 快捷方式: https://luoruowen.github.io/NIApp/Shortcut/index.html
+
+淘宝信用工具二维码: https://luoruowen.github.io/NIApp/Taobao/index.html
