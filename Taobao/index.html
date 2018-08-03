@@ -1,0 +1,102 @@
+
+<!DOCTYPE html>
+<html >
+  <head>
+    <title>淘宝信任工具二维码生成</title>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="initial-scale=1, maximum-scale=1">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="x5-fullscreen" content="true">
+    <!-- UC应用模式 -->
+    <meta name="browsermode" content="application">
+    <meta name="keywords" content="新创意软件工作室">
+    <meta name="description" content="淘宝信任工具二维码生成">
+  
+    <link rel="Bookmark" href="./favicon.ico" >
+    <link rel="Shortcut Icon" href="./favicon.ico" />
+
+    <script type="text/javascript" src="./js/jquery-1.11.1.min.js"></script>
+    <script type="text/javascript" src="./js/qrcode/jquery.qrcode.js" ></script>
+    <script type="text/javascript" src="./js/qrcode/qrcode.js" ></script> 
+    <script type="text/javascript" src="./js/qrcode/utf.js" ></script>
+    <script type="text/javascript" src="./js/jsencrypt.min.js" ></script>
+
+    <script type="text/javascript" src="./js/jsencrypt.min.js" ></script>
+    <script type="text/javascript" src="./js/Common.js" ></script>
+
+    <!--手机日期-->
+    <link type="text/css" href="./js/mobiscroll/mobiscroll.custom-3.0.0-beta2.min.css" rel="stylesheet" />
+    <script type="text/javascript" src="./js/mobiscroll/mobiscroll.custom-3.0.0-beta2.min.js"></script>
+    
+  </head>
+<body>
+  <input type="text" id="time" ><button type="button" onclick="createQrcode()">生成</button>
+  <hr>
+  <div id="qrcodeCanvas" onclick="downloadImg()"></div>
+  <textarea style="display:none;" id="privkey" rows="15" cols="65">-----BEGIN RSA PRIVATE KEY-----
+MIIBOwIBAAJBAJs63VtXgzf+gXxXzxnmuX25OMyA+UFixIUkaK3qdPSfIuKiMLO4
+qp8fHkSVguaR/jDe7vGQTiFXSbxIfk++3yECAwEAAQJAOxsM0gzeX+G+eBQPPXOG
+yYJPSD8LqYPsBC461Y3ifonFSrtaahgFMJONzM7tkoRBzJfUGWi0hIlO9ISXQEoc
+6QIhAP2V4zW/BG+Of9ONFTbRAVhjIVvBBa1LZh85a8KTiv4HAiEAnLU8fwOIrctI
+/YZ6Dk+ci3M9k/9kq9ILo6EW7I7yb5cCIDSXmX/UFf9s9mXRpMyxnC3QoWJ+Lcc7
+E/r11buNDg6RAiEAiPz9t2KVdqfAVK/bvurlRBoneFrH3FOvjQjjC0Qitl0CIQDf
+N4t0HTjyHyjQ9KBq0KZPmyaydZvMl8c7tBAjV5FDuA==
+-----END RSA PRIVATE KEY-----</textarea>
+
+<textarea style="display:none;" id="pubkey" rows="15" cols="65">-----BEGIN PUBLIC KEY-----
+MFwwDQYJKoZIhvcNAQEBBQADSwAwSAJBAJs63VtXgzf+gXxXzxnmuX25OMyA+UFi
+xIUkaK3qdPSfIuKiMLO4qp8fHkSVguaR/jDe7vGQTiFXSbxIfk++3yECAwEAAQ==
+-----END PUBLIC KEY-----</textarea>
+ <script>
+
+      var time=getDateWithDF(new Date(),0,'yyyy/MM/dd');
+      resetTimeInput('time', time,'yyyy/mm/dd');
+
+      var key=$("#privkey").val(); 
+
+      function createQrcode(){
+
+        var time=$('#time').val();
+        if(time.length<=0){
+            alert('请选择时间');
+        }else{
+          $("#qrcodeCanvas").html('');
+
+          var encrypt = new JSEncrypt({default_key_size: 512});
+          encrypt.setPublicKey(key);
+          var timeStr=$('#time').val();
+          var encrypted = encrypt.encrypt(timeStr);
+
+          // var decrypt = new JSEncrypt({default_key_size: 512});
+          // decrypt.setPrivateKey(key);
+          // var uncrypted = decrypt.decrypt(encrypted);
+          // var time2=new Date(uncrypted+" 23:59:00");
+
+          var urlStr="http://neworiginality.gitee.io/niapp/TaobaoMember/index.html?k="+encrypted;
+          //参数
+          var wh=$("#qrcodeCanvas").width();
+          jQuery('#qrcodeCanvas').qrcode({
+                    render    : "canvas",
+                    text    : urlStr,
+                    width : wh,               //二维码的宽度
+                    height : wh,              //二维码的高度
+                    background : "#ffffff",       //二维码的后景色
+                    foreground : "#000000",        //二维码的前景色
+                    //src: 'https://neworiginality.gitee.io/jgit/img/img'+id+'.png'             //二维码中间的图片
+                    //src: 'http://newideas.iok.la/ShortcutService/gitFile/JGIT/img/img'+id+'.png'
+                    src: './icon5.png'
+           }); 
+        }
+
+        
+      }
+    
+
+    // function downloadImg(){
+    //   $("#qrcodeCanvas").find('canvas')
+    // }
+ </script>
+</body>
+</html>
