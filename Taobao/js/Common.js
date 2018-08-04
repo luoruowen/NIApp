@@ -952,7 +952,7 @@ function resetTimeInput(inputId,defaultTime,dateFormatStr){
             dateOrder: 'yyyymmdd', //面板中日期排列格
             dateFormat: 'yy/mm/dd', // 日期格式
             startYear: 2000,
-            endYear: (new Date()).getFullYear(),
+            endYear: (new Date()).getFullYear()+1,
             defaultValue:(new Date(defaultTime)),
             lang: 'zh',           //使用语言
             display: 'center'     //显示方式
@@ -963,7 +963,7 @@ function resetTimeInput(inputId,defaultTime,dateFormatStr){
             dateOrder: 'yyyymm', //面板中日期排列格
             dateFormat: 'yy/mm', // 日期格式
             startYear: 2000,
-            endYear: (new Date()).getFullYear(),
+            endYear: (new Date()).getFullYear()+1,
             defaultValue:(new Date(defaultTime+'/01')),
             lang: 'zh',           //使用语言
             display: 'center'     //显示方式
