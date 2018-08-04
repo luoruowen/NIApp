@@ -34,7 +34,7 @@
 <body>
   <input type="text" id="time" ><button type="button" onclick="createQrcode()">生成</button>
   <hr>
-  <div id="qrcodeCanvas" onclick="downloadImg()"></div>
+  <div id="qrcodeCanvas" onclick="clickImg()"></div>
   <textarea style="display:none;" id="privkey" rows="15" cols="65">-----BEGIN RSA PRIVATE KEY-----
 MIIBOwIBAAJBAJs63VtXgzf+gXxXzxnmuX25OMyA+UFixIUkaK3qdPSfIuKiMLO4
 qp8fHkSVguaR/jDe7vGQTiFXSbxIfk++3yECAwEAAQJAOxsM0gzeX+G+eBQPPXOG
@@ -56,6 +56,7 @@ xIUkaK3qdPSfIuKiMLO4qp8fHkSVguaR/jDe7vGQTiFXSbxIfk++3yECAwEAAQ==
 
       var key=$("#pubkey").val(); 
 
+      var urlStr="";
       function createQrcode(){
 
         var time=$('#time').val();
@@ -74,7 +75,7 @@ xIUkaK3qdPSfIuKiMLO4qp8fHkSVguaR/jDe7vGQTiFXSbxIfk++3yECAwEAAQ==
           // var uncrypted = decrypt.decrypt(encrypted);
           // var time2=new Date(uncrypted+" 23:59:00");
 
-          var urlStr="http://neworiginality.gitee.io/niapp/TaobaoMember/index.html?k="+encrypted;
+          urlStr="http://neworiginality.gitee.io/niapp/TaobaoMember/index.html?k="+encrypted;
           //参数
           var wh=$("#qrcodeCanvas").width();
           jQuery('#qrcodeCanvas').qrcode({
@@ -92,9 +93,12 @@ xIUkaK3qdPSfIuKiMLO4qp8fHkSVguaR/jDe7vGQTiFXSbxIfk++3yECAwEAAQ==
       }
     
 
-    // function downloadImg(){
-    //   $("#qrcodeCanvas").find('canvas')
-    // }
+    function clickImg(){
+      //$("#qrcodeCanvas").find('canvas')
+      if(urlStr && urlStr!=""){
+        toHref(urlStr);
+      }
+    }
  </script>
 </body>
 </html>
